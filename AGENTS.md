@@ -17,7 +17,7 @@ Core features:
 - **Sync.** Across devices, through the reader's own Dropbox or Google Drive, or a server of their own.
 - **Web page for readers.** Exports a paper and its guide as one read-only HTML page.
 
-Live at `https://academic-reader.initialloop.com` (also `academic-reader.netlify.app`; Netlify project `academic-reader`, site id `cb861cc9-8fd6-4316-be31-be754e886450`), built from `main` on GitHub. It has no `SYNC_TOKEN`, so its sync function refuses everything; Brendan syncs through Dropbox like any other user. (His earlier private site, `gloss-reader-ai07`, has been retired.) The app is published under the **Initial Loop** brand; contact `support@initialloop.com`. The privacy policy is `public/privacy.html`, served at `/privacy` and linked from the Dropbox and Google app registrations: keep it accurate when data handling changes.
+Live at `https://academic-reader.initialloop.com`, served by the Cloudflare Worker `academic-reader` (static assets only, config in `wrangler.jsonc`; also at `academic-reader.initialloop.workers.dev`). `.github/workflows/deploy.yml` runs `build.sh` and `wrangler deploy` on every push to `main`, using repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` and variables `DROPBOX_APP_KEY` and `GOOGLE_CLIENT_ID`. The `initialloop.com` zone is on Cloudflare; the domain is attached to the Worker as a Workers custom domain. There is no sync server on the public site; Brendan syncs through Dropbox like any other user. The app moved from Netlify (project `academic-reader`); `netlify.toml` and `netlify/functions/sync.mts` stay for people who deploy their own copy there. Keep the address `academic-reader.initialloop.com`: readers' libraries, keys and sync tokens live in browser storage tied to it. The app is published under the **Initial Loop** brand; contact `support@initialloop.com`. The privacy policy is `public/privacy.html`, served at `/privacy` and linked from the Dropbox and Google app registrations: keep it accurate when data handling changes.
 
 Repo (public): `git@github.com:techurbanist/academic-reader.git`.
 
@@ -29,7 +29,7 @@ Repo (public): `git@github.com:techurbanist/academic-reader.git`.
 - **Nothing about a user goes to our servers.** The app talks directly from the browser to Anthropic, OpenAlex, Wikipedia, arXiv, Dropbox and Google. Keep it that way: no analytics, no proxy. A new outside service also needs adding to the CSP in `scripts/headers.mjs`.
 - **Test before shipping.** Every change so far has been verified in headless Chromium (Playwright) against a mocked Anthropic API, and against a local server running the real sync function (see Testing). Several real bugs were caught this way. Keep doing it.
 - **Be honest about limits.** When something is untested against the real API or real voices, say so. The owner prefers direct pushback to agreement.
-- **Deploying.** If the repo is linked to Netlify, GitHub is the source of truth: deliver commits, not side-channel deploys. Otherwise deploy with the Netlify MCP `deploy-site` flow from the repo root, which runs `build.sh`.
+- **Deploying.** GitHub is the source of truth: push to `main` and the Actions workflow deploys. Don't deploy from a working copy except to test on `workers.dev`, and if you do, build in a copy (build.sh edits `public/index.html` in place).
 - **Bump the service-worker cache name** (`gloss-shell-vN` in `public/sw.js`) on every deploy that changes `index.html`, and bump `APP_VERSION` in `index.html`.
 - **Library upgrades need new hashes.** The CDN scripts carry `integrity` attributes, and the pdf.js worker is checked against `PDFWORKER_SHA512`. Take hashes from `https://api.cdnjs.com/libraries/<name>/<version>?fields=sri`.
 
@@ -45,7 +45,9 @@ scripts/headers.mjs      writes public/_headers: the app pages' CSP with the sha
                          referrer policy for everything
 build.sh                 stamps __BUILD_TIME__, __PUBLIC_URL__, __DROPBOX_APP_KEY__, __GOOGLE_CLIENT_ID__ from env,
                          writes public/version.json, then runs scripts/headers.mjs (so the CSP hash matches the stamped page)
-netlify.toml             publish = public, command = bash build.sh, no-cache headers, Deploy-button env prompts
+wrangler.jsonc           the Cloudflare Worker: serves public/ (with its _headers) as static assets
+.github/workflows/deploy.yml   build and deploy to Cloudflare on push to main
+netlify.toml             for self-hosted Netlify copies: publish = public, command = bash build.sh, Deploy-button prompts
 ```
 
 `CONFIG` near the top of the script holds the stamped settings. A local unstamped copy treats them as empty: Dropbox and Drive then show "Not set up on this site".

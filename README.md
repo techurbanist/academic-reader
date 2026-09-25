@@ -60,6 +60,8 @@ Local copies are primary. Changes upload after a few seconds, and the app checks
 
 ## Running your own copy
 
+The public app runs as a static-assets Worker on Cloudflare (`wrangler.jsonc`; `bash build.sh && npx wrangler deploy`). A Netlify deploy also works, and is the option to choose if you want sync through your own server, since the sync function runs on Netlify.
+
 The app is a static page plus one optional serverless function, and it deploys to Netlify's free tier.
 
 [![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/techurbanist/academic-reader)
