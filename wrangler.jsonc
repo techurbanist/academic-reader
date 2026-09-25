@@ -1,0 +1,13 @@
+// Cloudflare Worker that serves the app: static files only, no Worker code.
+// Build first (bash build.sh stamps the site settings into public/ and writes public/_headers), then deploy.
+{
+  "name": "academic-reader",
+  "compatibility_date": "2026-09-25",
+  "assets": {
+    "directory": "./public",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  },
+  "workers_dev": true,
+  "preview_urls": false
+}
