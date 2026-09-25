@@ -592,7 +592,7 @@ function refSpan(text, q, r){
     for (const n of names){ const re=bound(n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')); const x=re.exec(seg); if (!x) continue;
       const s=qs+x.index, tail=text.slice(s+x[0].length).match(/^(?:,?\s+(?:and\s+)?\p{Lu}[\p{L}'’-]+)*(?:\s+et al\.|\s+and colleagues)?/u);
       return [s, s+x[0].length+(tail?tail[0].length:0)]; }
-    return null;
+    return qe-qs<=24 ? [qs,qe] : null;   // a short quote is the citation itself ("[12]", "ref. 4")
   }
   hits.sort((a,b)=>a[0]-b[0]); const [ys,ye]=hits[0];
   const open=text.lastIndexOf('(',ys), close=text.indexOf(')',ye);
