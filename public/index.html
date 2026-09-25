@@ -95,6 +95,8 @@ ul.plain li{margin:0 0 6px}
 .conn .t1{font-weight:600}
 .conn p{margin:4px 0 8px}
 .syncopt{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--rule)}
+.syncstat{border-top:1px solid var(--rule);padding-top:2px}
+.syncstat p{margin-top:8px!important}
 .syncopt.on b::after{content:" · on";color:var(--c-term);font-weight:500}
 .syncopt input{flex:1;min-width:8em}
 details.adv{margin-top:16px}
@@ -361,7 +363,7 @@ function wrapRange(root, start, end, make){
 // (a local copy) count as empty: Dropbox and Google Drive sync are then offered as "not set up here".
 const CONFIG = (()=>{ const v=x=>/^__.*__$/.test(x)?'':x;
   return { publicUrl: v('__PUBLIC_URL__') || 'https://academic-reader.initialloop.com', dropboxAppKey: v('__DROPBOX_APP_KEY__'), googleClientId: v('__GOOGLE_CLIENT_ID__') }; })();
-const APP_VERSION = '2026-09-25.13';
+const APP_VERSION = '2026-09-25.14';
 const APP_BUILD = '__BUILD_TIME__';   // replaced with the UTC deploy time by the Netlify build
 const buildLabel = b => /^__/.test(b) ? 'local copy' : `${b.replace('T',' ').replace(/Z$/,'')} UTC`;
 const Log = {
@@ -1104,8 +1106,8 @@ function openSettings(){ fillVersion();
     h('p',{class:'small'},'Keep your library, guides, questions and flashcards the same on your phone and computer, in your own cloud storage. Connect the same account on each device.'),
     choice('dropbox','Dropbox','Uses the folder Apps › Academic Reader.'),
     choice('gdrive','Google Drive','Uses a folder called Academic Reader. Google asks you to reconnect now and then.'),
-    srvSlot, Sync.statusLine(),
-    prov?h('div',{class:'row',style:'margin-top:8px'}, h('button',{class:'btn',onclick:()=>Sync.pullAll(true)},'Sync now')):null);
+    srvSlot,
+    h('div',{class:'syncstat'}, Sync.statusLine(), prov?h('div',{class:'row',style:'margin-top:8px'}, h('button',{class:'btn',onclick:()=>Sync.pullAll(true)},'Sync now')):null));
   // this site's own server, shown only where the site has one (the owner's deployment)
   Sync.probe().then(ok=>{ if (!ok && prov!=='server') return;
     const k=h('input',{type:'password',value:P.syncToken||'',placeholder:'Sync key',autocomplete:'off'});
