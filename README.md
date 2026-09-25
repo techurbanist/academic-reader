@@ -98,3 +98,9 @@ build.sh                   stamps the build time and site settings into the app,
 ```
 
 Serve `public/` with any static server to run it locally. `AGENTS.md` describes the architecture and the testing approach.
+
+## Licence
+
+Academic Reader is released under the [MIT licence](LICENSE): you may use, change and share it, including commercially, as long as you keep the copyright notice.
+
+One exception: the tables reproduced in `public/samples/attention.json` come from "Attention Is All You Need" (Vaswani et al., 2017) and remain under Google's notice on that paper, which permits reproducing its tables and figures, with attribution, for journalistic or scholarly works. The paper's text is not included; the app downloads it from arXiv.
