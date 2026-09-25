@@ -24,18 +24,16 @@ function safeEqual(a: string, b: string) {
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
-// SHA-256 of the sync key. The key itself is never stored here; only devices that know it can sync.
-const KEY_SHA256 = "REMOVED-FROM-HISTORY";
-
 async function sha256hex(text: string) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export async function route(req: Request, store: Store, token?: string): Promise<Response> {
-  // Fail closed: a SYNC_TOKEN environment variable overrides the built-in fingerprint; with neither, sync is off.
-  const expected = token ? await sha256hex(token) : KEY_SHA256;
-  if (!expected) return json({ error: "sync not configured" }, 503);
+// The sync key is set per site in the Netlify UI, as SYNC_TOKEN (the key itself) or SYNC_TOKEN_SHA256 (its
+// SHA-256 in hex, so the key never has to be typed into Netlify). With neither, sync is off: it fails closed.
+export async function route(req: Request, store: Store, token?: string, tokenSha256?: string): Promise<Response> {
+  const expected = token ? await sha256hex(token) : (tokenSha256 || "").trim().toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(expected)) return json({ error: "sync not configured" }, 503);
   if (!safeEqual(await sha256hex(req.headers.get("x-sync-token") || ""), expected)) return json({ error: "unauthorized" }, 401);
   const url = new URL(req.url);
   const parts = url.pathname.replace(/^\/api\/sync\/?/, "").split("/").filter(Boolean);
@@ -119,7 +117,7 @@ export async function route(req: Request, store: Store, token?: string): Promise
 
 export default async (req: Request, context: Context) => {
   const store = getStore({ name: "gloss", consistency: "strong" });
-  return route(req, store, Netlify.env.get("SYNC_TOKEN") || undefined);
+  return route(req, store, Netlify.env.get("SYNC_TOKEN") || undefined, Netlify.env.get("SYNC_TOKEN_SHA256") || undefined);
 };
 
 export const config: Config = {

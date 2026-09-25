@@ -1,6 +1,6 @@
 {
-  "name": "Gloss",
-  "short_name": "Gloss",
+  "name": "Academic Reader",
+  "short_name": "Reader",
   "description": "Read academic papers with a tutor in the margin.",
   "start_url": "./",
   "scope": "./",

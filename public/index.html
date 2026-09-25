@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Gloss</title>
+<title>Academic Reader</title>
 <meta name="theme-color" content="#1f2a44">
 <link rel="manifest" href="manifest.webmanifest" crossorigin="use-credentials">
 <link rel="icon" href="icon-192.png">
@@ -11,8 +11,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Figtree:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js" integrity="sha512-xeUh+KxNyTufZOje++oQHstlMQ8/rpyzPuM+gjMFYK3z5ILJGE7l2NvYL+XfliKURMpBIKKp1XoPN/qswlSMFA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js" integrity="sha512-jB0TkTBeQC9ZSkBqDhdmfTv1qdfbWpGE72yJ/01Srq6hEzZIz2xkz1e57p9ai7IeHMwEG7HpzG6NdptChif5Pg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
 :root{
   --bg:#f4f5f2; --surface:#ffffff; --ink:#1d2126; --muted:#5e6670; --rule:#d9dcd6; --shade:rgba(29,33,38,.06);
@@ -77,7 +77,34 @@ button{cursor:pointer}
 .m-note{background:color-mix(in srgb,var(--c-note) 13%,transparent);box-shadow:0 1.5px 0 color-mix(in srgb,var(--c-note) 55%,transparent)}
 [data-t]:hover{background-color:var(--shade)}
 
+/* welcome and settings */
+.welcome{max-width:36em;margin:1em auto 2em;font:16px/1.55 var(--ui)}
+.welcome h2{font:600 1.5em/1.25 var(--read-font)!important;margin:.2em 0 .5em!important}
+.welcome h3{font:600 15px/1.3 var(--ui)!important;font-style:normal!important;margin:1.6em 0 .4em!important}
+.welcome .lede{font-size:1.08em}
+.welcome p{margin:0 0 .7em}
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(14em,1fr));gap:10px;margin:1.2em 0}
+.feat{padding:12px 14px;border:1px solid var(--rule);border-radius:12px;background:var(--surface)}
+.feat b{display:block;margin-bottom:3px}
+.feat span{color:var(--muted);font-size:14px}
+ol.steps{padding-left:1.3em;margin:.4em 0 1em}
+ol.steps li{margin:0 0 6px}
+ul.plain{padding-left:1.1em}
+ul.plain li{margin:0 0 6px}
+.conn{border:1px solid var(--rule);border-radius:12px;padding:10px 12px;margin:0 0 10px}
+.conn .t1{font-weight:600}
+.conn p{margin:4px 0 8px}
+.syncopt{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--rule)}
+.syncopt.on b::after{content:" · on";color:var(--c-term);font-weight:500}
+.syncopt input{flex:1;min-width:8em}
+details.adv{margin-top:16px}
+details.adv summary{cursor:pointer;font-weight:600}
 /* static edition */
+.badge{position:fixed;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:15;display:flex;align-items:center;background:var(--surface);border:1px solid var(--rule);border-radius:999px;box-shadow:0 2px 10px rgba(0,0,0,.12);font:500 13px/1 var(--ui)}
+.badge .pill{display:flex;align-items:center;gap:7px;border:0;background:none;padding:8px 4px 8px 10px;color:var(--ink)}
+.badge .pill img{width:18px;height:18px;border-radius:4px}
+.badge .x{border:0;background:none;color:var(--muted);padding:8px 10px 8px 6px;font-size:16px;line-height:1}
+body.sheet-open .badge,body.tts-on .badge{display:none}
 .static #bLib,.static #askFab{display:none!important}
 .intro{margin:0 0 2em;padding:14px 16px;border:1px solid var(--rule);border-radius:12px;background:var(--surface);font:15px/1.5 var(--ui)}
 .intro h2{margin:0 0 6px!important;font:600 16px/1.3 var(--ui)!important}
@@ -234,7 +261,7 @@ body.tts-on #reader{padding-bottom:50vh}
 <body>
 <header id="top">
   <button class="ib" id="bLib" title="Library" aria-label="Library"><svg viewBox="0 0 24 24"><path d="M4 5h4v14H4zM10 5h4v14h-4zM16.5 5.5l3.5 1-3.5 13-3.5-1z"/></svg></button>
-  <h1 id="docTitle" role="button" tabindex="0" title="About this text">Gloss</h1>
+  <h1 id="docTitle" role="button" tabindex="0" title="About this text">Academic Reader</h1>
   <button class="ib" id="bListen" title="Read aloud" aria-label="Read aloud"><svg viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3.5" y="13.5" width="4" height="6.5" rx="1.5"/><rect x="16.5" y="13.5" width="4" height="6.5" rx="1.5"/></svg></button>
   <button class="ib" id="bGuide" title="Guide: outline, arguments, glossary, people, sources" aria-label="Guide"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM9 4v16M12 8h4M12 12h4"/></svg></button>
   <button class="ib aa" id="bAa" title="Reading settings" aria-label="Reading settings">Aa</button>
@@ -242,7 +269,7 @@ body.tts-on #reader{padding-bottom:50vh}
 </header>
 <main id="reader"><article id="doc"></article></main>
 
-<aside id="sheet" aria-label="Gloss panel">
+<aside id="sheet" aria-label="Reader panel">
   <header>
     <button class="ib" id="sBack" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
     <div class="crumb" id="sCrumb"></div>
@@ -328,7 +355,11 @@ function wrapRange(root, start, end, make){
 /* ============ error log ============ */
 // A rolling log of errors and warnings, kept on this device so problems can be reported precisely.
 // Never records the API key, sync key, or document text.
-const APP_VERSION = '2026-09-25.9';
+// Per-site settings, stamped by build.sh from Netlify environment variables (see README). Unstamped values
+// (a local copy) count as empty: Dropbox and Google Drive sync are then offered as "not set up here".
+const CONFIG = (()=>{ const v=x=>/^__.*__$/.test(x)?'':x;
+  return { publicUrl: v('__PUBLIC_URL__') || 'https://academic-reader.netlify.app', dropboxAppKey: v('__DROPBOX_APP_KEY__'), googleClientId: v('__GOOGLE_CLIENT_ID__') }; })();
+const APP_VERSION = '2026-09-25.10';
 const APP_BUILD = '__BUILD_TIME__';   // replaced with the UTC deploy time by the Netlify build
 const buildLabel = b => /^__/.test(b) ? 'local copy' : `${b.replace('T',' ').replace(/Z$/,'')} UTC`;
 const Log = {
@@ -342,7 +373,7 @@ const Log = {
     return e;
   },
   clear(){ localStorage.removeItem(this.KEY); },
-  text(){ return [`Gloss ${APP_VERSION}`, navigator.userAgent, `models: ${P.mainModel} / ${P.fastModel}, effort: ${P.guideEffort}/${P.askEffort}`, '',
+  text(){ return [`Academic Reader ${APP_VERSION}`, navigator.userAgent, `models: ${P.mainModel} / ${P.fastModel}, effort: ${P.guideEffort}/${P.askEffort}`, '',
     ...this.all().slice().reverse().map(e=>`${e.t} [${e.level}] ${e.where}: ${e.msg}${e.detail?`\n    ${e.detail}`:''}`)].join('\n'); }
 };
 addEventListener('error', e=>Log.add('error','page', e.message, e.error&&e.error.stack));
@@ -381,10 +412,11 @@ const Store = (()=>{
 const DB = STATIC ? staticStore() : Store.docs, Decks = STATIC ? {...staticStore(), get:async()=>null, all:async()=>[]} : Store.decks;
 const DEF_PREFS = {theme:'auto', font:'literata', fs:19, lh:1.65, measure:34, pad:20, layers:{moves:true,sigs:true,terms:true,people:true,refs:true,notes:true}, density:'para',
   mainModel:'claude-sonnet-5', fastModel:'claude-haiku-4-5-20251001', maxTokens:32000, guideEffort:'medium', askEffort:'high', openalexKey:'', unlockMins:60, ttsVoice:'', ttsRate:1, ttsSkipCites:true, ttsNotes:false,
-  about:'I am a curious, intelligent reader. I work as a software engineer, so I am comfortable with technical and computing ideas. I am new to academic philosophy and to most sciences outside computing, so their jargon, people and conventions need explaining. Formal logic and maths need plain-language explanation.'};
+  about:''};
 let P = Object.assign({}, DEF_PREFS, JSON.parse(localStorage.getItem('gloss.prefs')||'{}'));
 if (P.maxTokens<32000) P.maxTokens=32000;
 P.layers = Object.assign({}, DEF_PREFS.layers, P.layers||{});
+if (P.syncProvider===undefined) P.syncProvider = P.syncToken && P.sync!==false ? 'server' : '';
 const savePrefs = () => localStorage.setItem('gloss.prefs', JSON.stringify(P));
 
 /* ============ key vault (PBKDF2 + AES-GCM) ============ */
@@ -394,45 +426,44 @@ const Vault = (()=>{
   const b64 = u8 => btoa(String.fromCharCode(...u8)); const unb64 = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
   async function derive(pwd, salt){ const base=await crypto.subtle.importKey('raw', enc.encode(pwd), 'PBKDF2', false, ['deriveKey']);
     return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:600000, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']); }
+  // "Keep unlocked on this device": a non-extractable AES key held in its own small IndexedDB database
+  const kdb = (mode, fn) => new Promise((res,rej)=>{ const r=indexedDB.open('gloss-keys',1); r.onupgradeneeded=()=>r.result.createObjectStore('k');
+    r.onerror=()=>rej(r.error); r.onsuccess=()=>{ const t=r.result.transaction('k',mode); const q=fn(t.objectStore('k')); t.oncomplete=()=>res(q&&q.result); t.onerror=()=>rej(t.error); }; });
+  const stored = () => { try{ return JSON.parse(localStorage.getItem('gloss.vault')||'null'); }catch{ return null; } };
   return {
-    has: () => !!localStorage.getItem('gloss.vault'),
-    async set(apiKey, pwd){ const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
-      const k=await derive(pwd,salt); const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},k,enc.encode(apiKey)));
-      localStorage.setItem('gloss.vault', JSON.stringify({v:1,salt:b64(salt),iv:b64(iv),ct:b64(ct)})); key=apiKey; until=Date.now()+P.unlockMins*60000; },
-    async unlock(pwd){ const v=JSON.parse(localStorage.getItem('gloss.vault')); const k=await derive(pwd,unb64(v.salt));
-      try { key=dec.decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(v.iv)},k,unb64(v.ct))); } catch { throw new Error('That password did not unlock the key.'); }
-      until=Date.now()+P.unlockMins*60000; },
+    has: () => !!stored(),
+    mode: () => { const v=stored(); return !v ? null : v.mode==='device' ? 'device' : 'password'; },
+    async set(apiKey, pwd){ const iv=crypto.getRandomValues(new Uint8Array(12)); let k, rec;
+      if (pwd==null){ k=await crypto.subtle.generateKey({name:'AES-GCM', length:256}, false, ['encrypt','decrypt']); await kdb('readwrite', s=>s.put(k,'vault')); rec={v:2, mode:'device'}; }
+      else { const salt=crypto.getRandomValues(new Uint8Array(16)); k=await derive(pwd,salt); rec={v:1, salt:b64(salt)}; if (this.mode()==='device') await kdb('readwrite', s=>s.delete('vault')); }
+      const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},k,enc.encode(apiKey)));
+      localStorage.setItem('gloss.vault', JSON.stringify({...rec, iv:b64(iv), ct:b64(ct)})); key=apiKey; until=pwd==null?Infinity:Date.now()+P.unlockMins*60000; },
+    async unlock(pwd){ const v=stored(); const k=v.mode==='device' ? await kdb('readonly', s=>s.get('vault')) : await derive(pwd,unb64(v.salt));
+      if (!k) throw new Error('This browser no longer holds the key that protected your Claude key. Add the key again.');
+      try { key=dec.decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(v.iv)},k,unb64(v.ct))); } catch { throw new Error(v.mode==='device'?'Could not unlock the stored key. Add it again.':'That passphrase did not unlock the key.'); }
+      until=v.mode==='device'?Infinity:Date.now()+P.unlockMins*60000; },
     lock(){ key=null; until=0; },
-    forget(){ localStorage.removeItem('gloss.vault'); key=null; until=0; },
+    async forget(){ localStorage.removeItem('gloss.vault'); key=null; until=0; try{ await kdb('readwrite', s=>s.delete('vault')); }catch{} },
     isOpen: () => key && Date.now()<until,
-    async get(){ if (this.isOpen()) return key; await askUnlock(); return key; }
+    async get(){ if (this.isOpen()) return key;
+      if (this.mode()==='device'){ try{ await this.unlock(); return key; }catch(e){ toast(e.message, 6000, true); await this.forget(); } }
+      await askUnlock(); return key; }
   };
 })();
 function askUnlock(){
   return new Promise((resolve, reject)=>{
-    if (!Vault.has()) { openKeySetup(resolve, reject); return; }
+    if (!Vault.has()) { openKeySetup(resolve, reject, 'This uses Claude, so it needs your own Anthropic API key. It takes about two minutes to set up.'); return; }
     const pw = h('input',{type:'password',autocomplete:'current-password'}); const err=h('div',{class:'err small'});
     const go = async () => { try { err.textContent=''; btn.disabled=true; btn.textContent='Unlocking…'; await Vault.unlock(pw.value); closeDlg(); resolve(); } catch(e){ err.textContent=e.message; btn.disabled=false; btn.textContent='Unlock'; } };
     const btn = h('button',{class:'btn primary',onclick:go},'Unlock');
     pw.addEventListener('keydown',e=>{ if(e.key==='Enter') go(); });
-    showDlg([h('h2',{},h('span',{},'Unlock your API key')),
+    showDlg([h('h2',{},h('span',{},'Unlock your Claude key')),
       h('p',{class:'muted small'},`Your key stays unlocked for ${P.unlockMins} minutes.`),
-      h('div',{class:'field'},h('label',{},'Password'),pw), err,
+      h('div',{class:'field'},h('label',{},'Passphrase'),pw), err,
       h('div',{class:'row'},btn,h('button',{class:'btn',onclick:()=>{closeDlg();reject(new Error('Locked'));}},'Cancel'))], ()=>reject(new Error('Locked')));
     setTimeout(()=>pw.focus(),50);
   });
 }
-function openKeySetup(resolve=()=>{}, reject=()=>{}){
-  const k=h('input',{type:'password',placeholder:'sk-ant-…',autocomplete:'off'}), p1=h('input',{type:'password',autocomplete:'new-password'}), p2=h('input',{type:'password',autocomplete:'new-password'}), err=h('div',{class:'err small'});
-  const save = async () => { if (!k.value.trim().startsWith('sk-')) return err.textContent='That does not look like an Anthropic API key.';
-    if (p1.value.length<8) return err.textContent='Use a password of at least 8 characters.'; if (p1.value!==p2.value) return err.textContent='The passwords do not match.';
-    await Vault.set(k.value.trim(), p1.value); closeDlg(); toast('Key saved and encrypted'); resolve(); };
-  showDlg([h('h2',{},h('span',{},'Add your Anthropic API key')),
-    h('div',{class:'note'},'The key is encrypted with your password (PBKDF2, 600k rounds, AES-256-GCM) and stored only in this browser. It is sent only to api.anthropic.com. This protects the key at rest; it cannot protect it from someone who controls this device while it is unlocked, so use a key with a spending limit.'),
-    h('div',{class:'field'},h('label',{},'API key'),k), h('div',{class:'field'},h('label',{},'Password'),p1), h('div',{class:'field'},h('label',{},'Confirm password'),p2), err,
-    h('div',{class:'row'},h('button',{class:'btn primary',onclick:save},'Save key'),h('button',{class:'btn',onclick:()=>{closeDlg();reject(new Error('No key'));}},'Cancel'))], ()=>reject(new Error('No key')));
-}
-
 /* ============ Claude API (streaming) ============ */
 async function claudeStream(body, onDelta){
   if (STATIC) throw new Error('This page is read-only.');
@@ -592,6 +623,9 @@ function refSpan(text, q, r){
     for (const n of names){ const re=bound(n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')); const x=re.exec(seg); if (!x) continue;
       const s=qs+x.index, tail=text.slice(s+x[0].length).match(/^(?:,?\s+(?:and\s+)?\p{Lu}[\p{L}'’-]+)*(?:\s+et al\.|\s+and colleagues)?/u);
       return [s, s+x[0].length+(tail?tail[0].length:0)]; }
+    // numbered citations: this work's number inside a group like "[38, 2, 9]"
+    const num=refNumber(r), grp=text.slice(qs,qe).match(/^\[\s*\d+(?:\s*[,–-]\s*\d+)*\s*\]$/);
+    if (num && grp){ const m=text.slice(qs,qe).match(new RegExp(`(?<!\\d)${num}(?!\\d)`)); if (m) return grp[0].match(/\d+/g).length===1 ? [qs,qe] : [qs+m.index, qs+m.index+num.length]; }
     return qe-qs<=24 ? [qs,qe] : null;   // a short quote is the citation itself ("[12]", "ref. 4")
   }
   hits.sort((a,b)=>a[0]-b[0]); const [ys,ye]=hits[0];
@@ -621,6 +655,14 @@ function bare(text, ys, ye, names){
   const loc=text.slice(ye).match(/^,\s*(?:pp?\.|ch\.|§|n\.|preprint)[^;,)]*/);
   return [nameBefore(text,ys,names), ye+(loc?loc[0].length:0)];
 }
+// A numbered work's number: from its key ("Ba et al. 2016 [1]"), or by finding its entry in the reference list.
+const REFNUM=new Map();
+function refNumber(r){
+  if (REFNUM.has(r)) return REFNUM.get(r);
+  let n=(String(r.key||'').match(/\[(\d+)\]/)||[])[1]||null;
+  if (!n && r.full){ const head=collapse(r.full).replace(/[*_]/g,'').slice(0,40).toLowerCase(); const b=head.length>12 && BLOCKS.find(b=>b.bib && b.text.toLowerCase().includes(head)); const m=b && b.text.match(/^\[(\d+)\]/); if (m) n=m[1]; }
+  REFNUM.set(r,n); return n;
+}
 // Guide jobs sometimes give the paragraph number one off (often the heading above). Look nearby for the quote.
 function anchorBid(a){
   const b=BY.get(a.bid); if (!b) return null;
@@ -634,9 +676,9 @@ function renderDoc(keepScroll){
   if (typeof TTS!=='undefined'){ TTS.cache.clear(); }
   if (!DOC){ art.innerHTML=''; showEmpty(); return; }
   if (DOC.convert){ art.innerHTML=''; BLOCKS=[]; BY=new Map(); $('#docTitle').textContent=DOC.title; art.append(conversionPanel(DOC)); return; }
-  BLOCKS = renderMd(currentMd(), art); BY = new Map(BLOCKS.map(b=>[b.bid,b])); blockNum.clear(); BLOCKS.forEach(b=>blockNum.set(b.n,b.bid));
+  BLOCKS = renderMd(currentMd(), art); BY = new Map(BLOCKS.map(b=>[b.bid,b])); blockNum.clear(); BLOCKS.forEach(b=>blockNum.set(b.n,b.bid)); REFNUM.clear();
   if (STATIC && !staticSeen()) art.prepend(staticIntro());
-  $('#docTitle').textContent = DOC.title; document.title = DOC.title+(STATIC?'':' · Gloss');
+  $('#docTitle').textContent = DOC.title; document.title = DOC.title+(STATIC?'':' · Academic Reader');
   const pk = pack(); buildEntityIndex();
   if (pk){
     const L=P.layers, seenTerm=new Set();
@@ -651,11 +693,12 @@ function renderDoc(keepScroll){
       const spans=[];
       for (const a of refAnchors.get(b.bid)||[]){ const r=refSpan(text,a.q,a.r); if (r && !spans.some(t=>r[0]<t.e && t.s<r[1])) spans.push({s:r[0],e:r[1],kind:'ref',id:a.r.id}); }
       if (!b.isH && !b.bib){
+        const unit = el.tagName==='TR' ? 'T'+$$('#doc table').indexOf(el.closest('table')) : b.bid;   // a table counts as one paragraph
         const ents = entitySpans(text,{people:L.people, terms:L.terms});
         ents.sort((a,b2)=>a.s-b2.s);
         for (const s of ents){
           if (spans.some(t=>s.s<t.e && t.s<s.e)) continue;
-          if (P.density!=='all'){ const key=s.kind+s.id+(P.density==='para'?b.bid:''); if (seenTerm.has(key)) continue; seenTerm.add(key); }
+          if (P.density!=='all'){ const key=s.kind+s.id+(P.density==='para'?unit:''); if (seenTerm.has(key)) continue; seenTerm.add(key); }
           spans.push(s);
         }
       }
@@ -684,11 +727,8 @@ async function appendEndNav(){
   $('#doc').append(h('nav',{class:'endnav','aria-label':'Other texts'}, btn(prev,'prev',cur.group?'Previous section':'Previous text'), btn(next,'next',cur.group?'Next section':'Next text')));
 }
 function showEmpty(){
-  $('#docTitle').textContent='Gloss';
-  $('#doc').append(h('div',{class:'empty'},
-    h('h2',{},'Read papers with a tutor in the margin'),
-    h('p',{},'Open a Markdown file or a PDF. Gloss can build a guide for it: what each paragraph is doing, the terms of art, the people, and the sources. Select any passage to ask about it.'),
-    h('div',{class:'row'}, h('button',{class:'btn primary',onclick:()=>pickFile('.md,.markdown,.txt',importText)},'Open Markdown'), h('button',{class:'btn',onclick:()=>pickFile('.pdf,application/pdf',importPdf)},'Convert a PDF'), h('button',{class:'btn',onclick:openSample},'Try the sample'))));
+  $('#docTitle').textContent='Academic Reader'; document.title='Academic Reader';
+  $('#doc').append(welcome());
 }
 
 /* ============ sheet / card stack ============ */
@@ -736,7 +776,7 @@ function openTarget(t, id, i, fromDoc){
 function gotoBlock(bid){ const b=BY.get(bid); if (!b) return; if (innerWidth<1100) closeSheet(); b.el.scrollIntoView({behavior:'smooth',block:'center'}); b.el.classList.remove('flash'); void b.el.offsetWidth; b.el.classList.add('flash'); }
 const gotoLink = (bid, label) => h('a',{href:'#',class:'small',onclick:e=>{e.preventDefault();gotoBlock(bid);}}, label||'Show in text');
 function prose(text){ return h('div',{class:'prose',html:md(text)}); }
-function sec(title, ...kids){ const k=kids.flat().filter(x=>x!=null&&x!==''&&x!==false); if (!k.length) return null; return h('section',{}, title?h('h3',{},title):null, ...k); }
+function sec(title, ...kids){ const k=kids.flat().filter(x=>x!=null&&x!==''&&x!==false); if (!k.length) return ''; /* '' not null: append(null) prints "null" */ return h('section',{}, title?h('h3',{},title):null, ...k); }
 const enc = encodeURIComponent;
 // Which family of fields a text belongs to, from the field the overview reported (or the reader set).
 function fieldOf(){ return (pack()&&pack().meta&&pack().meta.field)||''; }
@@ -936,7 +976,7 @@ const LENSES = [
   ['quiz','Quiz me','Write three questions that test whether I understood the selected passage, from easy to hard. After each question, put the answer inside <details><summary>Answer</summary>…</details>.'],
 ];
 function tutorSystem(){
-  return `You are a patient, rigorous tutor helping someone read an academic text closely${fieldOf()?` in ${fieldOf()}`:''}. Explain it in the terms of that field. About the reader: ${P.about}
+  return `You are a patient, rigorous tutor helping someone read an academic text closely${fieldOf()?` in ${fieldOf()}`:''}. Explain it in the terms of that field. About the reader: ${P.about||DEFAULT_READER}
 Write in clear, direct prose. Explain jargon when you use it. Be concrete. Give your honest assessment where asked, including disagreement with the text.
 If you are unsure of a fact (a date, who said what, a publication), say so. Never invent quotations or citations. Format with Markdown; use ### for section headings.`;
 }
@@ -1042,32 +1082,194 @@ const fillVersion = () => setTimeout(async()=>{ const s=$('#verSlot'); if (s) s.
 function openSettings(){ fillVersion();
   const sel=(label,key,opts)=>h('div',{class:'field'},h('label',{},label),h('select',{onchange:e=>{P[key]=e.target.value;savePrefs();}},opts.map(([v,l])=>h('option',{value:v,selected:P[key]===v},l))));
   const f=(label,key,type='text',help)=>{ const i=type==='textarea'?h('textarea',{rows:4},P[key]):h('input',{type,value:P[key]}); i.onchange=()=>{ P[key]=type==='number'?+i.value:i.value; savePrefs(); }; return h('div',{class:'field'},h('label',{},label),i,help?h('div',{class:'muted small'},help):null); };
+  const again=()=>{ closeDlg(); openSettings(); };
+  // Claude
+  const vm=Vault.mode();
+  const claude=h('div',{class:'conn'}, h('div',{class:'t1'},'Claude'),
+    h('p',{class:'small'}, !vm?'Not connected. Needed to build guides and to ask questions.':vm==='device'?'Connected. The key is kept unlocked on this device.':`Connected. The key is protected by your passphrase${Vault.isOpen()?' and is unlocked now':''}.`),
+    h('div',{class:'row'}, vm?h('button',{class:'btn',onclick:()=>{ closeDlg(); openKeySetup(); }},'Replace key'):h('button',{class:'btn primary',onclick:()=>{ closeDlg(); openKeySetup(); }},'Connect Claude'),
+      vm==='password'&&Vault.isOpen()?h('button',{class:'btn',onclick:()=>{ Vault.lock(); toast('Locked'); again(); }},'Lock now'):null,
+      vm?h('button',{class:'btn',onclick:async()=>{ if (confirm('Remove the Claude key from this browser?')){ await Vault.forget(); toast('Key removed'); again(); } }},'Remove key'):null,
+      vm?ext(CONSOLE.limits,'Usage and limits'):null));
+  // Sync
+  const prov=Sync.provider();
+  const srvSlot=h('div');
+  const choice=(p, label, note) => { const A=Auth[p], on=prov===p;
+    return h('div',{class:'syncopt'+(on?' on':'')}, h('div',{}, h('b',{},label), h('div',{class:'muted small'}, !A.ready()?'Not set up on this site.':note)),
+      on?h('button',{class:'btn',onclick:async()=>{ if (!confirm(`Stop syncing with ${label}? Everything stays on this device${p==='dropbox'||p==='gdrive'?' and in your '+label:''}.`)) return; await Sync.disconnect(); again(); }},'Disconnect')
+        :h('button',{class:'btn',disabled:!A.ready(),onclick:()=>{ if (prov && !confirm(`Switch sync to ${label}? This device’s library will be merged into ${label}.`)) return; Sync.connect(p); }},'Connect')); };
+  const sync=h('div',{class:'conn'}, h('div',{class:'t1'},'Sync across devices'),
+    h('p',{class:'small'},'Keep your library, guides, questions and flashcards the same on your phone and computer, in your own cloud storage. Connect the same account on each device.'),
+    choice('dropbox','Dropbox','Uses the folder Apps › Academic Reader.'),
+    choice('gdrive','Google Drive','Uses a folder called Academic Reader. Google asks you to reconnect now and then.'),
+    srvSlot, Sync.statusLine(),
+    prov?h('div',{class:'row',style:'margin-top:8px'}, h('button',{class:'btn',onclick:()=>Sync.pullAll(true)},'Sync now')):null);
+  // this site's own server, shown only where the site has one (the owner's deployment)
+  Sync.probe().then(ok=>{ if (!ok && prov!=='server') return;
+    const k=h('input',{type:'password',value:P.syncToken||'',placeholder:'Sync key',autocomplete:'off'});
+    srvSlot.append(h('div',{class:'syncopt'+(prov==='server'?' on':'')}, h('div',{}, h('b',{},'This site’s server'), h('div',{class:'muted small'},'For a copy of Academic Reader you run yourself on Netlify.'),
+        h('div',{class:'row',style:'margin-top:6px'}, k, h('button',{class:'btn',onclick:async()=>{ P.syncToken=k.value.trim(); savePrefs(); if (prov!=='server') await Sync.connect('server'); else await Sync.init(); again(); toast(Sync.needsAuth?'That key was not accepted.':'Sync key saved.'); }},prov==='server'?'Save':'Connect'))),
+      prov==='server'?h('button',{class:'btn',onclick:async()=>{ await Sync.disconnect(); again(); }},'Disconnect'):null)); });
   showDlg([h('h2',{},h('span',{},'Settings'),closeX()),
-    h('h3',{},'Sync across devices'),
-    Sync.available?h('div',{class:'row'}, h('label',{class:'row',style:'gap:6px'}, h('input',{type:'checkbox',checked:P.sync!==false,onchange:e=>{ P.sync=e.target.checked; savePrefs(); if (Sync.on()) Sync.pullAll(); }}),'Keep my texts, guides and questions in sync'), h('button',{class:'btn',onclick:()=>Sync.pullAll(true)},'Sync now'))
-      : h('p',{class:'muted small'},'Sync is not available here. It works when Gloss is opened from its Netlify address while you are signed in.'),
-    Sync.available?(()=>{ const k=h('input',{type:'password',value:P.syncToken||'',placeholder:'Paste your sync key',autocomplete:'off'});
-      return h('div',{class:'field',style:'margin-top:10px'}, h('label',{},'Sync key'), h('div',{class:'row'}, k, h('button',{class:'btn',onclick:async()=>{ P.syncToken=k.value.trim(); savePrefs(); Sync.needsKey=false; Sync.error=''; await Sync.init(); closeDlg(); openSettings(); toast(Sync.needsKey?'That key was not accepted.':'Sync key saved.'); }},'Save')),
-        h('div',{class:'muted small'},'The server only accepts requests carrying this key. It is stored on this device.')); })():null,
-    Sync.available?Sync.statusLine():null,
-    h('h3',{},'API key'),
-    h('div',{class:'row'}, Vault.has()?h('button',{class:'btn',onclick:()=>{ closeDlg(); openKeySetup(); }},'Replace key'):h('button',{class:'btn primary',onclick:()=>{ closeDlg(); openKeySetup(); }},'Add key'),
-      Vault.has()?h('button',{class:'btn',onclick:()=>{ Vault.lock(); toast('Locked'); }},'Lock now'):null,
-      Vault.has()?h('button',{class:'btn',onclick:()=>{ if (confirm('Remove the stored key from this browser?')){ Vault.forget(); closeDlg(); toast('Key removed'); } }},'Remove key'):null),
-    f('Unlock lasts (minutes)','unlockMins','number'),
-    h('h3',{},'Models'),
-    f('Main model (guides and explanations)','mainModel','text','Model ID from the Anthropic API docs.'),
-    f('Fast model (PDF clean-up)','fastModel'),
-    f('Max output tokens per request','maxTokens','number','Thinking counts against this limit.'),
-    sel('Effort when building guides','guideEffort',[['low','Low (fastest)'],['medium','Medium'],['high','High (slowest, most thorough)']]),
-    sel('Effort when answering questions','askEffort',[['low','Low'],['medium','Medium'],['high','High']]),
+    h('h3',{},'Connections'), claude, sync,
+    h('div',{class:'conn'}, h('div',{class:'t1'},'Looking up sources'), f('OpenAlex API key (optional, free)','openalexKey','text','Used to show abstracts of cited works. Without a key you share a small daily allowance with everyone.')),
+    h('h3',{},'About you'), f('The tutor writes for this reader','about','textarea','For example: “I’m a nurse reading neuroscience papers. I’m fine with statistics but new to the jargon.” Leave it empty for a general reader.'),
+    h('h3',{},'Your data'),
+    h('div',{class:'row'}, h('button',{class:'btn',onclick:backupAll},'Download a backup'), h('button',{class:'btn',onclick:()=>{ closeDlg(); pickFile('.json',async f=>importJson(await f.text())); }},'Restore a backup'), h('button',{class:'btn',onclick:openPrivacy},'How your data is kept')),
+    h('details',{class:'adv'}, h('summary',{},'Advanced'),
+      f('Unlock lasts (minutes)','unlockMins','number','For a key protected by a passphrase.'),
+      f('Main model (guides and explanations)','mainModel','text','Model ID from the Anthropic API docs.'),
+      f('Fast model (PDF clean-up)','fastModel'),
+      f('Max output tokens per request','maxTokens','number','Thinking counts against this limit.'),
+      sel('Effort when building guides','guideEffort',[['low','Low (fastest)'],['medium','Medium'],['high','High (slowest, most thorough)']]),
+      sel('Effort when answering questions','askEffort',[['low','Low'],['medium','Medium'],['high','High']]),
+      h('div',{class:'row',style:'margin-top:8px'}, h('button',{class:'btn',onclick:()=>{ closeDlg(); openLog(); }},`Error log (${Log.all().length})`)),
+      h('h3',{},'Last API response'),
+      h('pre',{style:'white-space:pre-wrap;font-size:12px;max-height:200px;overflow:auto;background:var(--shade);padding:10px;border-radius:8px'}, LAST_DEBUG?JSON.stringify(LAST_DEBUG,null,1):'None yet in this session.')),
     h('div',{id:'verSlot'}),
-    h('h3',{},'Troubleshooting'), h('div',{class:'row'}, h('button',{class:'btn',onclick:()=>{ closeDlg(); openLog(); }},`Error log (${Log.all().length})`)),
-    h('h3',{},'Last API response'),
-    h('pre',{style:'white-space:pre-wrap;font-size:12px;max-height:200px;overflow:auto;background:var(--shade);padding:10px;border-radius:8px'}, LAST_DEBUG?JSON.stringify(LAST_DEBUG,null,1):'None yet in this session.'),
-    h('h3',{},'About you'), f('The tutor writes for this reader','about','textarea'),
-    h('h3',{},'Sources'), f('OpenAlex API key (optional, free)','openalexKey','text','Used to look up abstracts. Without a key you share a small daily budget.'),
   ]);
+}
+
+/* ============ welcome, setup and your data ============ */
+// US$ per million tokens [input, output], checked September 2026. Cache writes (1 hour) cost 2× input, cache reads 0.1×.
+const PRICES = {'claude-sonnet-5':[2,10], 'claude-haiku-4-5':[1,5], 'claude-haiku-4-5-20251001':[1,5], 'claude-opus-5':[5,25], 'claude-opus-5-5':[4,20], 'claude-fable-5-1':[10,50]};
+// A rough price for a guide: one cache write of the whole text, cache reads for the other jobs, and an average
+// output per job (JSON plus thinking at medium effort). Real costs vary with the text and the model's thinking.
+function guideEstimate(words, model=P.mainModel){
+  const p=PRICES[model]; if (!p) return null;
+  const prefix=Math.round(words*1.4)+1500, jobs=3+3*Math.max(1,Math.ceil(words/1700));
+  const usd=((prefix*2 + prefix*0.1*(jobs-1) + jobs*400)*p[0] + jobs*3500*p[1])/1e6;
+  return {jobs, lo:usd*0.6, hi:usd*1.6};
+}
+const money = x => '$'+(x<10?x.toFixed(2):Math.round(x));
+const priceRange = e => e ? `${money(e.lo)}–${money(e.hi)}` : 'an amount that depends on the model';
+const CONSOLE = {home:'https://console.anthropic.com/', billing:'https://console.anthropic.com/settings/billing', limits:'https://console.anthropic.com/settings/limits', keys:'https://console.anthropic.com/settings/keys'};
+const ext = (href, text) => h('a',{href, target:'_blank', rel:'noopener'}, text);
+const DEFAULT_READER = 'A curious, intelligent reader who may be new to this field. Explain its jargon, people and conventions, and put formal logic and maths into plain language.';
+
+function welcome(inDialog){
+  const go = fn => () => { if (inDialog) closeDlg(); fn(); };
+  const feat = (t, d) => h('div',{class:'feat'}, h('b',{},t), h('span',{},d));
+  return h('div',{class:'welcome'},
+    h('h2',{},'Read academic papers with a tutor in the margin'),
+    h('p',{class:'lede'},'Academic Reader explains a paper while you read it: what each paragraph is doing in the argument, the terms of art, the people, and the works it cites. Select any passage to ask about it.'),
+    h('div',{class:'row'}, h('button',{class:'btn primary',onclick:go(openSample)},'Try it on “Attention Is All You Need”')),
+    h('p',{class:'muted small'},'The 2017 paper that introduced the Transformer. Your browser downloads it from arXiv and it opens with a guide already built, so you can try everything without setting anything up.'),
+    h('div',{class:'features'},
+      feat('Notes in the margin','What each paragraph claims, how the argument is built, and the wording that matters.'),
+      feat('Glossary, people and sources','Terms of art explained in the paper’s own field, who the people are, and why each work is cited.'),
+      feat('Ask about anything','Select words to have them unpacked, put in plain English, set in context or argued for and against.'),
+      feat('Listen and remember','Read-aloud with your device’s voices, and flashcards with spaced repetition.')),
+    h('h3',{},'Open your own'),
+    h('div',{class:'row'}, h('button',{class:'btn',onclick:go(()=>pickFile('.pdf,application/pdf',importPdf))},'Open a PDF'), h('button',{class:'btn',onclick:go(arxivDialog)},'From arXiv'),
+      h('button',{class:'btn',onclick:go(()=>pickFile('.md,.markdown,.txt,.json',importText))},'Open Markdown'), h('button',{class:'btn',onclick:go(pasteDialog)},'Paste text')),
+    h('h3',{},'What it costs'),
+    h('p',{},'Reading, listening, flashcards and guides that come with a paper are free. Building a new guide or asking questions uses Claude through your own Anthropic API key, and you pay Anthropic directly: roughly ',
+      priceRange(guideEstimate(8000)),' for the guide to an 8,000-word paper, and a few cents per question. ', h('a',{href:'#',onclick:e=>{ e.preventDefault(); if (inDialog) closeDlg(); openKeySetup(); }},Vault.has()?'Your Claude key':'Connect Claude'),'.'),
+    h('h3',{},'Private by design'),
+    h('p',{},'There is no account. Your papers, notes and key stay in this browser, and requests go straight from your browser to Anthropic. ', h('a',{href:'#',onclick:e=>{ e.preventDefault(); if (inDialog) closeDlg(); openPrivacy(); }},'How your data is kept'),'.'));
+}
+function openWelcome(){ showDlg([h('h2',{},h('span',{},'Academic Reader'),closeX()), welcome(true)]); }
+
+async function checkClaudeKey(k){
+  try{ const r=await fetch('https://api.anthropic.com/v1/models?limit=1',{headers:{'x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}});
+    if (r.ok) return {ok:true};
+    if (r.status===401||r.status===403) return {ok:false, msg:'Anthropic did not accept that key. Check you copied all of it.'};
+    return {ok:null, msg:`Could not check the key (Anthropic replied ${r.status}).`};
+  }catch{ return {ok:null, msg:'Could not reach Anthropic to check the key (offline?).'}; }
+}
+function openKeySetup(resolve=()=>{}, reject=()=>{}, reason){
+  const k=h('input',{type:'password',placeholder:'sk-ant-…',autocomplete:'off',spellcheck:'false'}), status=h('div',{class:'small',style:'min-height:1.4em;margin-top:4px'});
+  const p1=h('input',{type:'password',autocomplete:'new-password'}), p2=h('input',{type:'password',autocomplete:'new-password'});
+  const mPw=h('input',{type:'radio',name:'kmode',checked:true}), mDev=h('input',{type:'radio',name:'kmode'});
+  const pwBox=h('div',{class:'field',style:'margin:6px 0 0 26px'}, h('label',{},'Passphrase'), p1, h('label',{style:'margin-top:6px'},'Passphrase again'), p2);
+  const sync=()=>{ pwBox.style.display=mPw.checked?'':'none'; }; mPw.onchange=mDev.onchange=sync;
+  const about=h('textarea',{rows:3,placeholder:'For example: I’m a nurse reading neuroscience papers. I’m fine with statistics but new to the jargon.'}, P.about||'');
+  const err=h('div',{class:'err small'});
+  const check=async()=>{ status.textContent='Checking…'; const r=await checkClaudeKey(k.value.trim()); status.textContent=r.ok?'✓ Anthropic accepted this key.':r.msg; status.className='small '+(r.ok===false?'err':''); return r; };
+  const save=async e=>{ err.textContent='';
+    const key=k.value.trim(); if (!/^sk-ant-/.test(key)) return err.textContent='That does not look like an Anthropic API key (they start with sk-ant-).';
+    if (mPw.checked){ if (p1.value.length<8) return err.textContent='Use a passphrase of at least 8 characters.'; if (p1.value!==p2.value) return err.textContent='The passphrases do not match.'; }
+    e.target.disabled=true; const r=await check(); e.target.disabled=false;
+    if (r.ok===false) return;
+    await Vault.set(key, mPw.checked?p1.value:null); P.about=about.value.trim(); savePrefs();
+    closeDlg(); toast(r.ok?'Claude is connected.':'Key saved. '+r.msg, 5000); resolve(); };
+  const est=guideEstimate(8000);
+  showDlg([h('h2',{},h('span',{},'Connect Claude'),closeX()),
+    reason?h('p',{},reason):null,
+    h('p',{},'Guides and answers are written by Claude, using your own key from Anthropic. You pay Anthropic for what you use: roughly ',priceRange(est),' for the guide to an 8,000-word paper, and a few cents per question. A Claude.ai subscription does not include this; the API is billed separately.'),
+    h('ol',{class:'steps'},
+      h('li',{},'Sign up or sign in at the ',ext(CONSOLE.home,'Anthropic Console'),'.'),
+      h('li',{},'Add some credit under ',ext(CONSOLE.billing,'Billing'),'. Five dollars goes a long way.'),
+      h('li',{},h('b',{},'Recommended: '),'set a monthly spend limit under ',ext(CONSOLE.limits,'Limits'),'. It caps what anyone could spend if the key ever leaked.'),
+      h('li',{},'Create a key under ',ext(CONSOLE.keys,'API keys'),', name it “Academic Reader”, and copy it.')),
+    h('div',{class:'field'}, h('label',{},'Your API key'), h('div',{class:'row'}, k, h('button',{class:'btn',onclick:check},'Check')), status),
+    h('h3',{},'How to keep it on this device'),
+    h('label',{class:'opt'}, mPw, h('span',{}, h('b',{},'Ask for a passphrase. '), `Safest. The key is encrypted with your passphrase, and you unlock it for ${P.unlockMins} minutes at a time when you use Claude.`)), pwBox,
+    h('label',{class:'opt'}, mDev, h('span',{}, h('b',{},'Keep it unlocked on this device. '), 'Convenient. The key is encrypted with a key this browser holds and will not export, so copying the browser’s files does not reveal it, but anyone using this browser can use Claude with it.')),
+    h('h3',{},'About you (optional)'),
+    h('div',{class:'field'}, about, h('div',{class:'muted small'},'The tutor writes for this reader. You can change it later in Settings.')),
+    h('p',{class:'muted small'},'Your key is sent only to api.anthropic.com. It never reaches this site. ', h('a',{href:'#',onclick:e=>{ e.preventDefault(); openPrivacy(); }},'How your data is kept'),'.'),
+    err,
+    h('div',{class:'row'}, h('button',{class:'btn primary',onclick:save},'Save'), h('button',{class:'btn',onclick:()=>{ closeDlg(); reject(new Error('No key')); }},'Cancel'))], ()=>reject(new Error('No key')));
+  setTimeout(()=>k.focus(),50);
+}
+
+function openPrivacy(){
+  const li = (...k) => h('li',{},...k);
+  showDlg([h('h2',{},h('span',{},'How your data is kept'),closeX()),
+    h('h3',{},'On this device'),
+    h('p',{},'Your papers, guides, questions and flashcards are kept in this browser’s storage on this device. There is no account, and this site does not receive them. Settings stay in this browser too.'),
+    h('h3',{},'What leaves your device, and when'),
+    h('ul',{class:'plain'},
+      li(h('b',{},'Anthropic'),' (api.anthropic.com): the text of a paper when you build its guide, and the passage and question when you ask something. This is covered by Anthropic’s API terms.'),
+      li(h('b',{},'OpenAlex and Wikipedia'),': the title of a cited work or a person’s name, when you open its card, to show an abstract or a biography.'),
+      li(h('b',{},'arXiv'),': a request for the paper, when you import from arXiv or open the sample.'),
+      li(h('b',{},'Dropbox or Google Drive'),': your library, only if you turn on sync. It goes into a folder called Academic Reader, and the app can reach nothing else in your account.'),
+      li(h('b',{},'This site'),': nothing. It serves the app’s page and nothing more.')),
+    h('h3',{},'Your Claude key'),
+    h('p',{},'The key is encrypted (AES-256-GCM) before it is stored. With a passphrase, the encryption key is derived from the passphrase (PBKDF2, 600,000 rounds) and never stored. Without one, it is a key the browser holds and will not export. The key is sent only to api.anthropic.com.'),
+    h('p',{},'While the key is unlocked, anyone using this browser can use it, and so could malicious code running in this page. The app pins the exact versions of its two libraries and tells the browser to refuse connections to anywhere not listed above, which closes the usual routes. The real safety net is a monthly spend limit on the key, set in the ',ext(CONSOLE.limits,'Anthropic Console'),'.'),
+    h('h3',{},'Keeping a backup'),
+    h('p',{},'Clearing this site’s data in your browser deletes everything here. Turn on sync in Settings, or download a backup now and then.'),
+    h('div',{class:'row'}, h('button',{class:'btn',onclick:backupAll},'Download a backup'), h('button',{class:'btn',onclick:()=>{ closeDlg(); pickFile('.json',async f=>importJson(await f.text())); }},'Restore a backup')),
+    h('h3',{},'The code'),
+    h('p',{},'Academic Reader is open source: ', ext('https://github.com/techurbanist/academic-reader','github.com/techurbanist/academic-reader'),'. You can read exactly what it does, or run your own copy.')]);
+}
+
+async function backupAll(){
+  const docs=(await DB.all()).filter(d=>!d.deleted && !d.convert).map(({sync,dirty,editSeq,...d})=>d);
+  const decks=(await Decks.all()).filter(k=>!k.deleted).map(({etag,dirty,...k})=>k);
+  const {syncToken, ...prefs}=P;
+  download(`academic-reader-backup-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify({schema:'gloss-backup/1', at:Date.now(), app:APP_VERSION, docs, decks, prefs}));
+  toast(`Backup saved: ${docs.length} text${docs.length===1?'':'s'}, ${decks.length} flashcard deck${decks.length===1?'':'s'}. The Claude key is not included.`, 5000);
+}
+async function restoreBackup(j){
+  let n=0, m=0;
+  for (const d of j.docs||[]){ if (!d || !d.id || !Array.isArray(d.versions)) continue; const cur=await DB.get(d.id);
+    if (!cur || (d.updated||0)>(cur.updated||0)){ touch(d); if (cur && cur.sync) d.sync=cur.sync; await DB.put(d); Sync.schedule(d); n++; } }
+  for (const k of j.decks||[]){ if (!k || !k.id || !Array.isArray(k.cards)) continue; const cur=await Decks.get(k.id);
+    const merged=Sync.mergeDeck(cur, k); merged.dirty=true; if (cur && cur.etag) merged.etag=cur.etag; await Decks.put(merged); Sync.scheduleDeck(merged); m++; }
+  toast(`Restored ${n} text${n===1?'':'s'} and ${m} deck${m===1?'':'s'}. Newer copies already here were kept.`, 5000);
+  if (!DOC){ const all=(await DB.all()).filter(x=>!x.deleted).sort((a,b)=>b.updated-a.updated); if (all[0]) openDoc(all[0].id); }
+}
+
+/* ---- arXiv: the browser downloads the PDF straight from arXiv (it allows this), then imports it as usual ---- */
+const arxivId = s => { const m=String(s||'').trim().match(/(?:arxiv\.org\/(?:abs|pdf|html)\/)?(\d{4}\.\d{4,5}(?:v\d+)?|[a-z-]+(?:\.[a-z]{2})?\/\d{7}(?:v\d+)?)/i); return m ? m[1] : null; };
+async function fetchArxivPdf(id){
+  const r=await fetch(`https://arxiv.org/pdf/${id}`); if (!r.ok) throw new Error(`arXiv replied ${r.status} for ${id}`);
+  const b=await r.blob(); if (!/pdf/.test(b.type) && b.size<2000) throw new Error('arXiv did not return a PDF');
+  return new File([b], id.replace('/','_')+'.pdf', {type:'application/pdf'});
+}
+function arxivDialog(){
+  const inp=h('input',{type:'text',placeholder:'https://arxiv.org/abs/1706.03762 or 1706.03762',autocomplete:'off'});
+  const go=async()=>{ const id=arxivId(inp.value); if (!id) return toast('That does not look like an arXiv link or ID.'); closeDlg();
+    try{ Prog.show(`Downloading ${id} from arXiv…`); const f=await fetchArxivPdf(id); Prog.hide(); await importPdf(f); }
+    catch(e){ Prog.hide(); toast('Could not download from arXiv: '+e.message, 6000, true); } };
+  inp.addEventListener('keydown',e=>{ if (e.key==='Enter') go(); });
+  showDlg([h('h2',{},h('span',{},'Import from arXiv'),closeX()), h('div',{class:'field'}, h('label',{},'arXiv link or ID'), inp),
+    h('p',{class:'muted small'},'Your browser downloads the PDF directly from arXiv, then converts it here.'), h('button',{class:'btn primary',onclick:go},'Import')]);
+  setTimeout(()=>inp.focus(),50);
 }
 
 /* ============ library & import ============ */
@@ -1085,10 +1287,11 @@ async function importText(file){
 }
 async function importJson(text){
   let j; try{ j=JSON.parse(text); }catch{ return toast('That file is not valid JSON.'); }
+  if (j.schema==='gloss-backup/1') return restoreBackup(j);
   if (j.schema==='gloss-bundle/1'){ DOC=Object.assign(j.doc,{id:uid()}); await saveDoc(); localStorage.setItem('gloss.last',DOC.id); renderDoc(); toast('Imported'); return; }
   if (j.schema==='gloss-pack/1'){ if (!DOC) return toast('Open the matching document first, then import its guide.');
     DOC.pack=j; await saveDoc(); renderDoc(); const hit=Object.keys(j.moves||{}).filter(k=>BY.has(k)).length; toast(`Guide attached (${hit} paragraphs matched).`); return; }
-  toast('Not a Gloss file.');
+  toast('Not an Academic Reader file.');
 }
 // Earlier PDF imports have no group: infer one from the shared "Book title: " prefix they were given.
 async function inferGroups(docs){
@@ -1127,8 +1330,8 @@ async function openLibrary(){
     if (open) for (const d of r.docs) list.append(row(d, true));
   }
   showDlg([h('h2',{},h('span',{},'Library'),closeX()),
-    h('div',{class:'row'}, h('button',{class:'btn primary',onclick:()=>{ closeDlg(); pickFile('.md,.markdown,.txt,.json',importText); }},'Open Markdown'), h('button',{class:'btn',onclick:()=>{ closeDlg(); pickFile('.pdf,application/pdf',importPdf); }},'Convert a PDF'), h('button',{class:'btn',onclick:pasteDialog},'Paste text')),
-    recs.length?h('h3',{},'Your texts'):h('p',{class:'muted',style:'margin-top:16px'},'Nothing here yet. The ⋮ menu has a short sample text to try.'), list,
+    h('div',{class:'row'}, h('button',{class:'btn primary',onclick:()=>{ closeDlg(); pickFile('.md,.markdown,.txt,.json',importText); }},'Open Markdown'), h('button',{class:'btn',onclick:()=>{ closeDlg(); pickFile('.pdf,application/pdf',importPdf); }},'Open a PDF'), h('button',{class:'btn',onclick:()=>{ closeDlg(); arxivDialog(); }},'From arXiv'), h('button',{class:'btn',onclick:pasteDialog},'Paste text')),
+    recs.length?h('h3',{},'Your texts'):h('p',{class:'muted',style:'margin-top:16px'},'Nothing here yet. ',h('a',{href:'#',onclick:e=>{ e.preventDefault(); closeDlg(); openSample(); }},'Try the sample paper'),'.'), list,
     pages>1?h('div',{class:'pager'}, h('button',{class:'btn',disabled:LIB.page===0,onclick:()=>{ LIB.page--; openLibrary(); }},'Newer'), h('span',{},`Page ${LIB.page+1} of ${pages}`), h('button',{class:'btn',disabled:LIB.page>=pages-1,onclick:()=>{ LIB.page++; openLibrary(); }},'Older')):null]);
 }
 function pasteDialog(){
@@ -1160,11 +1363,11 @@ async function openMore(){
     doc&&hasGuide()?act('Guide only (.gloss.json)', ()=>download(slug(doc.title)+'.gloss.json', JSON.stringify(pk,null,1))):null,
     doc?act('Text and guide together', ()=>download(slug(doc.title)+'.bundle.json', JSON.stringify({schema:'gloss-bundle/1', doc}))):null,
     doc&&hasGuide()?act('Web page for readers…', exportStatic):null,
-    h('h3',{},'Gloss'),
+    h('h3',{},'Academic Reader'),
     act('Library', ()=>$('#bLib').click()),
     act('Settings', openSettings),
-    act('Add the sample text', openSample),
-    act('Error log', openLog),
+    act('Welcome and help', openWelcome),
+    act('How your data is kept', openPrivacy),
     Sync.statusLine(), h('div',{id:'verSlot'}),
   ]); fillVersion();
 }
@@ -1189,7 +1392,7 @@ async function openInfo(){
       ...rowI('Field', field),
       ...(STATIC?[]:rowI('Your questions', String((pk&&pk.notes||[]).length))),
       ...(STATIC?[]:rowI('Flashcards', cc?`${cc.total} (${cc.n+cc.l+cc.d} to study today)`:'none'))]),
-    STATIC?h('p',{class:'muted small',style:'margin-top:14px'},'The paragraph notes, glossary, people and source summaries were written by Claude, an AI model, and can be wrong. The text itself is the authority. Made with Gloss.'):
+    STATIC?h('p',{class:'muted small',style:'margin-top:14px'},'The paragraph notes, glossary, people and source summaries were written by Claude, an AI model, and can be wrong. The text itself is the authority. Made with Academic Reader.'):
     h('div',{class:'row',style:'margin-top:14px'}, h('button',{class:'btn',onclick:async()=>{ const t=prompt('Title', d.title); if (t&&t.trim()){ d.title=t.trim(); await saveDoc(); $('#docTitle').textContent=d.title; openInfo(); } }},'Rename'),
       !d.convert?h('button',{class:'btn',onclick:()=>{ closeDlg(); Screen.stack=[]; openDeck(d.id); }},'Flashcards'):null)]);
 }
@@ -1253,6 +1456,54 @@ function staticMenu(){
     act('Read aloud', ()=>$('#bListen').click()),
     act('About this text', openInfo)]);
 }
+// The small "Made with Academic Reader" link in the corner of a shared page, and its card.
+function staticBadge(){
+  try{ if (localStorage.getItem('gloss.static.badge')==='off') return; }catch{}
+  const icon=$('link[rel=icon]')?.href;
+  const b=h('div',{class:'badge'},
+    h('button',{class:'pill',onclick:()=>openCard(appCard(),true)}, icon?h('img',{src:icon,alt:''}):null, 'Made with Academic Reader'),
+    h('button',{class:'x','aria-label':'Hide this',onclick:()=>{ try{ localStorage.setItem('gloss.static.badge','off'); }catch{} b.remove(); }},'×'));
+  document.body.append(b);
+}
+function appCard(){
+  return { title:'Academic Reader', render(){
+    const w=h('div',{class:'card'});
+    w.append(h('h2',{},'Academic Reader'), h('p',{class:'kind'},'Read academic papers with a tutor in the margin'),
+      sec(null, prose('This page was made with Academic Reader, a free app that builds this kind of guide for any paper: a note on every paragraph, a glossary, the people and the sources. With your own Claude key you can also select any passage and ask about it, and make flashcards.')),
+      sec('Keep reading this paper there', h('p',{class:'small'},'Opens this paper and its guide in the app, in your own library, where you can ask questions and take notes.'),
+        h('button',{class:'btn primary',onclick:openInApp},'Open this paper in Academic Reader')),
+      sec('Read your own papers', h('p',{class:'small'},'Open a PDF or an arXiv link. Nothing to install and no account: everything stays in your browser.'),
+        h('div',{class:'links'}, h('a',{href:CONFIG.publicUrl,target:'_blank',rel:'noopener'},'Go to Academic Reader'))));
+    return w; } };
+}
+// Hands the paper to the app in a new tab: the app says it is ready, this page answers with the text and guide.
+function openInApp(){
+  const origin=new URL(CONFIG.publicUrl).origin;
+  const w=window.open(CONFIG.publicUrl.replace(/\/?$/,'/')+'#receive','_blank');
+  if (!w) return toast('Your browser blocked the new tab. Allow pop-ups for this page and try again.', 6000);
+  const bundle={schema:'gloss-bundle/1', doc:STATIC.doc};
+  const onMsg=e=>{ if (e.source!==w || e.origin!==origin || !e.data || e.data.type!=='ar-ready') return; w.postMessage({type:'ar-bundle', bundle}, origin); removeEventListener('message',onMsg); };
+  addEventListener('message',onMsg); setTimeout(()=>removeEventListener('message',onMsg), 180000);
+}
+// The app's side: opened as ".../#receive" by a shared page, ask it for the paper and offer to add it.
+function receiveFromPage(){
+  if (location.hash!=='#receive') return false;
+  history.replaceState(null,'',location.pathname);
+  if (!window.opener){ toast('Open the paper again from the page it came from.'); return false; }
+  let got=false; const ping=setInterval(()=>{ if (got) return clearInterval(ping); try{ window.opener.postMessage({type:'ar-ready'},'*'); }catch{ clearInterval(ping); } }, 400);
+  setTimeout(()=>clearInterval(ping), 30000);
+  addEventListener('message', async e=>{
+    if (got || e.source!==window.opener || !e.data || e.data.type!=='ar-bundle') return;
+    const j=e.data.bundle; if (!j || j.schema!=='gloss-bundle/1' || !j.doc || !Array.isArray(j.doc.versions) || !j.doc.versions.length) return;
+    got=true; clearInterval(ping);
+    const md=j.doc.versions[j.doc.versions.length-1].md, same=(await DB.all()).find(d=>!d.deleted && d.versions.length && vh(d.versions[d.versions.length-1].md)===vh(md));
+    if (same){ await openDoc(same.id); return toast('This paper is already in your library.'); }
+    showDlg([h('h2',{},h('span',{},'Add this paper?'),closeX()), h('p',{},`Add “${j.doc.title}” and its guide to your library? It is kept in this browser.`),
+      h('div',{class:'row'}, h('button',{class:'btn primary',onclick:async()=>{ closeDlg(); const {sync, dirty, editSeq, ...d}=j.doc; await importJson(JSON.stringify({schema:'gloss-bundle/1', doc:{...d, created:Date.now(), updated:Date.now()}})); window.scrollTo(0,0); }},'Add to my library'),
+        h('button',{class:'btn',onclick:closeDlg},'Not now'))]);
+  });
+  return true;
+}
 function copyLink(bid){
   const url=location.href.split('#')[0]+'#'+bid;
   (navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(()=>toast('Link copied.'), ()=>prompt('Link to this paragraph:', url));
@@ -1287,7 +1538,7 @@ const GUIDE_SCHEMA = S.obj({
   terms: S.arr(S.obj({term:S.str, aliases:S.arr(S.str), kind:{type:'string',enum:TERM_KINDS}, short:S.str, background:S.str, inThisPaper:S.str, related:S.arr(S.str)}))
 }, []);
 
-const GEN_SYSTEM = () => `You annotate academic texts for a reader who is learning to read them closely. The text may come from any field: annotate it in the terms of its own field. About the reader: ${P.about}
+const GEN_SYSTEM = () => `You annotate academic texts for a reader who is learning to read them closely. The text may come from any field: annotate it in the terms of its own field. About the reader: ${P.about||DEFAULT_READER}
 The whole text is given once, with paragraphs numbered ¶n. Each request then asks for ONE part of the annotation. Reply with a single JSON object in exactly the shape the request gives, and nothing else: no prose before or after, no code fences. Escape quotation marks inside strings.
 When asked for an exact quote (q), copy a short span character for character from that paragraph (keep its punctuation and capitalisation), 2 to 12 words long, unique within the paragraph.
 Be accurate. If unsure of a biographical or bibliographic fact, leave it out rather than guess. Do not invent quotations. Plain, direct prose; Markdown allowed inside text fields.`;
@@ -1447,8 +1698,10 @@ function queueState(pk){ const j=(pk&&pk.jobs)||[]; return {total:j.length, left
 
 async function generateGuide(){
   if (!DOC) return;
-  if (hasGuide() && !confirm('Rebuild the guide from scratch? Your saved questions will be kept.')) return;
-  { const w=wordCount(currentMd()); if (w>40000 && !confirm(`This text is long (${w.toLocaleString()} words), so the guide will take many requests and resend the whole text with each one. Guides work best per chapter. Build it anyway?`)) return; }
+  { const w=wordCount(currentMd()), e=guideEstimate(w);
+    const cost=`It takes about ${e?e.jobs:'several'} requests to Claude and costs roughly ${priceRange(e)} with ${P.mainModel}, charged to your Anthropic account.`;
+    const long=w>40000?` This text is long (${w.toLocaleString()} words) and guides work best per chapter.`:'';
+    if (!confirm((hasGuide()?'Rebuild the guide from scratch? Your saved questions will be kept. ':'Build a guide for this text? ')+cost+long)) return; }
   const keepNotes = pack()?pack().notes||[]:[];
   DOC.pack = {schema:'gloss-pack/1', createdAt:Date.now(), model:P.mainModel, docHash:fnv(currentMd()), meta:{title:DOC.title,summary:''}, outline:[], arguments:[], people:[], references:[], moves:{}, terms:[], notes:keepNotes, jobs:[]};
   DOC.pack.jobs = planJobs(BLOCKS);
@@ -1756,7 +2009,18 @@ function blocksToMarkdown(blocks, labels = {}) {
    document per choice. Each document holds its raw page text and a list of clean-up parts; every part is
    saved as it finishes, failures are retried, and an interrupted conversion can be resumed. */
 let pdfjsReady=null;
-function loadPdfJs(){ return pdfjsReady ||= new Promise((res,rej)=>{ const s=h('script',{src:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'}); s.onload=()=>{ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; res(); }; s.onerror=()=>{ pdfjsReady=null; rej(new Error('Could not load the PDF reader (are you offline?)')); }; document.head.append(s); }); }
+// pdf.js and its worker are pinned by hash: the library through the script's integrity attribute, the worker by
+// fetching it, checking its SHA-512, and running the checked copy.
+const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/', PDFJS_SRI='sha512-q+4liFwdPC/bNdhUpZx6aXDx/h77yEQtn4I1slHydcbZK34nLaR3cAeYSJshoxIOq3mjEf7xJE8YWIUHMn+oCQ==', PDFWORKER_SHA512='BbrZ76UNZq5BhH7LL7pn9A4TKQpQeNCHOo65/akfelcIBbcVvYWOFQKPXIrykE3qZxYjmDX573oa4Ywsc7rpTw==';
+function loadPdfJs(){ return pdfjsReady ||= new Promise((res,rej)=>{
+  const fail=()=>{ pdfjsReady=null; rej(new Error('Could not load the PDF reader (are you offline?)')); };
+  const s=h('script',{src:PDFJS+'pdf.min.js', integrity:PDFJS_SRI, crossorigin:'anonymous', referrerpolicy:'no-referrer'});
+  s.onload=async()=>{ try{ const code=await (await fetch(PDFJS+'pdf.worker.min.js',{mode:'cors'})).arrayBuffer();
+      const got=btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-512', code))));
+      if (got!==PDFWORKER_SHA512) throw new Error('worker hash mismatch');
+      pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([code],{type:'text/javascript'})); res(); }
+    catch(e){ Log.add('error','PDF reader', e.message); fail(); } };
+  s.onerror=fail; document.head.append(s); }); }
 async function outlineRanges(pdf){
   let items=null; try{ items=await pdf.getOutline(); }catch{}
   if (!items||!items.length) return [];
@@ -1792,7 +2056,7 @@ async function importPdf(file){
   const bookTitle=collapse(((await pdf.getMetadata().catch(()=>null))||{}).info?.Title||'') || file.name.replace(/\.pdf$/i,'');
   const n=pdf.numPages;
   const choice = await new Promise(resolve=>{
-    const modes=[['layout','Standard','Gloss rebuilds paragraphs, italics and footnotes from the page layout; Claude only labels headings and page clutter. Fast, cheap, and the wording is exactly the PDF’s.'],['rewrite','Thorough','Claude retypes the text. Slower and dearer; use it for two-column journal pages, scans or heavy tables.'],['none','No Claude','Layout only, with headings guessed from type size. Free and instant.']];
+    const modes=[['layout','Standard','The reader rebuilds paragraphs, italics and footnotes from the page layout; Claude only labels headings and page clutter. Fast, cheap, and the wording is exactly the PDF’s.'],['rewrite','Thorough','Claude retypes the text. Slower and dearer; use it for two-column journal pages, scans or heavy tables.'],['none','No Claude','Layout only, with headings guessed from type size. Free and instant.']];
     const modeIn=modes.map(([v],i)=>h('input',{type:'radio',name:'cmode',value:v,checked:i===0})); const body=[];
     const bib=ranges.find(r=>BIB.test(r.title));
     if (ranges.length>1){
@@ -2020,7 +2284,60 @@ function samplePack(){
       {id:'illusionist',term:'illusionist',aliases:['illusionists','illusionism'],kind:'position',short:'Someone who holds that phenomenal consciousness, as philosophers describe it, is an illusion produced by how the brain represents itself.',background:'The view descends from Daniel Dennett and was named and developed as a research programme by Keith Frankish in 2016.',inThisPaper:'Presented as going further than ordinary physicalism.',related:['physicalist','zombie']}
     ], notes:[], jobs:[]};
 }
-async function openSample(){ await newDoc(SAMPLE_MD,'Sample'); DOC.pack=samplePack(); await saveDoc(); renderDoc(); toast('Tap the margin bars, underlined words and citations.'); }
+// The sample: "Attention Is All You Need". Its licence lets arXiv distribute it but not us, so the reader's browser
+// downloads the PDF from arXiv and converts it here. samples/attention.json holds only a recipe (which extracted
+// blocks are headings, which to drop or join, and short fixes: equations, and the tables Google's notice lets us
+// reproduce) and the guide. The recipe is keyed to extractLayout's blocks: if extractLayout changes, re-check it.
+function applyRecipe(blocks, R){
+  let L=blocks.map((b,i)=>({id:String(i+1), text:b.text}));
+  const find=id=>L.find(x=>x.id===id);
+  for (const [id,a,b] of R.fix||[]){ const x=find(id); if (x) x.text=x.text.split(a).join(b); }
+  for (const [id,seps] of R.split||[]){ const i=L.findIndex(x=>x.id===id); if (i<0) continue; const parts=[L[i].text];
+    for (const sp of seps){ const last=parts.pop(), k=last.indexOf(sp); if (k<0){ parts.push(last); continue; } parts.push(last.slice(0,k).trim(), last.slice(k).trim()); }
+    L.splice(i,1,...parts.map((t,j)=>({id:j?`${id}.${j}`:id, text:t}))); }
+  for (const [id,t] of Object.entries(R.text||{})){ const x=find(id); if (x) x.text=t; }
+  const drop=new Set(R.drop||[]); L=L.filter(x=>!drop.has(x.id));
+  for (const [id,after] of R.move||[]){ const i=L.findIndex(x=>x.id===id); if (i<0) continue; const [x]=L.splice(i,1); L.splice(L.findIndex(y=>y.id===after)+1,0,x); }
+  for (const [before,level,t] of R.insert||[]){ const j=L.findIndex(y=>y.id===before); if (j>=0) L.splice(j,0,{id:'+'+j, text:t, level}); }
+  const H=R.heading||{}, notes=R.notes||{}, join=new Set(R.join||[]), cap=new Set(R.caption||[]);
+  const glob=(R.global||[]).map(([re,to])=>[new RegExp(re,'gu'),to]);
+  const out=[], defs=[];
+  for (const x of L){
+    let t=x.text;
+    if (x.level==null && parseInt(x.id)<(R.globalBefore||1e9)){
+      if (R.normaliseCites) t=t.replace(/\[\s*(\d+(?:\s*,\s*\d+)*)\s*\]/g,(m,a)=>'['+a.split(/\s*,\s*/).join(', ')+']');
+      for (const [re,to] of glob) t=t.replace(re,to); }
+    t=t.replace(/\u0001(\d+)\u0002/g,'[^$1]');
+    if (notes[x.id]){ defs.push(`[^${notes[x.id]}]: ${t}`); continue; }
+    const level = x.level!=null ? x.level : H[x.id];
+    if (level){ out.push('#'.repeat(level)+' '+t); continue; }
+    if (x.level===0 || t.startsWith('|')){ out.push(t); continue; }
+    if (join.has(x.id) && out.length){ out[out.length-1]+=(/[\p{L}]-$/u.test(out[out.length-1])&&/^\p{Ll}/u.test(t)?'':' ')+t; if (/[\p{L}]-[\p{Ll}]/u.test(out[out.length-1])) out[out.length-1]=out[out.length-1].replace(/([\p{L}])- (?=\p{Ll})/gu,'$1'); continue; }
+    if (cap.has(x.id)){ out.push('*'+t+'*'); continue; }
+    if (t.startsWith('• ')){ out.push('- '+t.slice(2)); continue; }
+    out.push(t.replace(/^(\d+)\. /,'$1\\. ').replace(/^(#|>|[-+*] )/, m=>'\\'+m));
+  }
+  return out.join('\n\n')+(defs.length?'\n\n'+defs.join('\n\n'):'');
+}
+async function openSample(){
+  try{
+    const have=(await DB.all()).find(d=>!d.deleted && d.sample==='attention'); if (have){ await openDoc(have.id); window.scrollTo(0,0); return; }
+    Prog.show('Downloading the paper from arXiv…');
+    const sample=await (await fetch('samples/attention.json')).json();
+    await loadPdfJs();
+    const pdf=await pdfjsLib.getDocument({data:await (await fetchArxivPdf(sample.source.arxiv)).arrayBuffer()}).promise;
+    Prog.set('Reading the pages…', null, '');
+    const x=await extractLayout(pdf, 1, pdf.numPages, i=>Prog.set(`Reading page ${i} of ${pdf.numPages}`, null, ''));
+    const md=applyRecipe(x.blocks, sample.recipe); Prog.hide();
+    DOC={id:uid(), title:sample.title, sample:'attention', versions:[{md, at:Date.now(), name:'arXiv '+sample.source.arxiv}], pack:sample.pack, created:Date.now(), updated:Date.now(), pos:0};
+    await saveDoc(); localStorage.setItem('gloss.last', DOC.id); closeSheet(); renderDoc(); window.scrollTo(0,0);
+    if (sample.pack){ const hit=Object.keys(sample.pack.moves||{}).filter(k=>BY.has(k)).length, all=Object.keys(sample.pack.moves||{}).length;
+      if (hit<all*0.9) Log.add('warn','Sample', `Only ${hit} of ${all} paragraph notes matched the downloaded text.`); }
+    toast('Tap a bar in the margin, an underlined word or a citation.', 5000);
+  }catch(e){ Prog.hide(); Log.add('error','Sample', e.message);
+    toast('Could not download the sample from arXiv ('+e.message+'). Opening a short example instead.', 6000); openShortSample(); }
+}
+async function openShortSample(){ await newDoc(SAMPLE_MD,'Sample'); DOC.pack=samplePack(); await saveDoc(); renderDoc(); toast('Tap the margin bars, underlined words and citations.'); }
 
 /* ============ read aloud (Web Speech API) ============ */
 /* Speaks one sentence at a time: long utterances get cut off in some browsers, and sentence-sized pieces
@@ -2128,28 +2445,277 @@ $('#ttsPlay').onclick=()=>TTS.toggle(); $('#ttsPrev').onclick=()=>TTS.skip(-1); 
 $('#ttsStop').onclick=()=>TTS.stop(); $('#ttsRate').onclick=()=>TTS.rate();
 document.addEventListener('visibilitychange',()=>{ if (document.visibilityState==='visible' && TTS.playing){ TTS.lock(); if (!speechSynthesis.speaking){ TTS.stopSpeech(); TTS.speak(); } } });
 
-/* ============ sync (Netlify Blobs via /api/sync) ============ */
+/* ============ sync: where the data goes ============ */
+/* The merge logic (Sync, below) talks to a backend with a few operations: heads with a revision check, immutable
+   text versions and guides, and flashcard decks. Three backends: this site's own server (/api/sync, Netlify Blobs),
+   and the reader's own Dropbox or Google Drive, reached straight from the browser. The two cloud drives share one
+   adapter over a tiny file store (list, read, write with a revision check, remove). */
 const vh = md => fnv(md)+md.length.toString(36);
 const packHash = pk => pk ? fnv(JSON.stringify(pk)) : '';
-const Sync = {
-  available:false, busy:new Set(), timers:{}, last:null, error:'', running:false,
-  on(){ return this.available && !this.needsKey && P.sync!==false; },
-  async api(path, opts={}){
+class NeedsAuth extends Error {}
+class Conflict extends Error {}
+const SYNC_FOLDER = 'Academic Reader';
+
+function serverBackend(){
+  const api = async (path, opts={}) => {
     const r = await fetch('/api/sync/'+path, {...opts, credentials:'same-origin', headers:{...(opts.headers||{}), ...(P.syncToken?{'x-sync-token':P.syncToken}:{})}});
     const ct=r.headers.get('content-type')||'';
-    if (r.status===401 && ct.includes('json')) { this.needsKey=true; throw new Error('Enter your sync key in Settings to sync this device.'); }
-    if (r.status===503 && ct.includes('json')) throw new Error('Sync is not set up on the server yet.');
-    if (r.status===401||r.status===403||(r.ok && ct.includes('text/html'))) throw new Error('Sync needs you to be signed in to Netlify on this device.');
+    if (r.status===401 && ct.includes('json')) throw new NeedsAuth('Enter your sync key to sync with this site’s server.');
+    if (r.status===503 && ct.includes('json')) throw new Error('Sync is not set up on this site’s server (no SYNC_TOKEN).');
+    if (r.status===401||r.status===403||(r.ok && ct.includes('text/html'))) throw new NeedsAuth('This site needs you to be signed in to Netlify to sync.');
     return r;
+  };
+  const ok = async r => { if (!r.ok) throw new Error('sync request failed ('+r.status+')'); return r; };
+  const put = (path, body, headers={}) => api(path,{method:'PUT',headers,body}).then(ok);
+  return {
+    listHeads: async () => (await ok(await api('list'))).json(),
+    async putHead(id, head, base){ const r=await api(`head/${id}`,{method:'PUT',headers:{'content-type':'application/json','x-base-rev':String(base)},body:JSON.stringify(head)});
+      if (r.status===409) return {conflict:await r.json()}; await ok(r); return {ok:true}; },
+    getVer: async (id,h) => { const r=await api(`ver/${id}/${h}`); return r.ok ? r.text() : null; },
+    putVer: (id,h,md) => put(`ver/${id}/${h}`, md),
+    getPack: async (id,h) => { const r=await api(`pack/${id}/${h}`); return r.ok ? r.json() : null; },
+    putPack: (id,h,pk) => put(`pack/${id}/${h}`, JSON.stringify(pk)),
+    listDecks: async () => (await ok(await api('decks'))).json(),
+    getDeck: async id => { const r=await api(`deck/${id}`); return r.ok ? r.json() : null; },
+    putDeck: async (id, body) => (await (await put(`deck/${id}`, JSON.stringify(body), {'content-type':'application/json'})).json()).etag,
+  };
+}
+
+// The same operations over a folder of files. Heads are compare-and-swap on the file's revision.
+function fileBackend(fs){
+  const N={head:id=>`head.${id}.json`, ver:(id,h)=>`ver.${id}.${h}.md`, pack:(id,h)=>`pack.${id}.${h}.json`, deck:id=>`deck.${id}.json`};
+  const heads=new Map();   // file name -> {rev, head}, so a pull reads only the heads that changed
+  const drop = async prefix => { for (const name of (await fs.list()).keys()) if (name.startsWith(prefix)) await fs.remove(name); };
+  return {
+    async listHeads(){
+      const out=[];
+      for (const [name,rev] of await fs.list()){ if (!/^head\.[a-z0-9]+\.json$/.test(name)) continue;
+        let c=heads.get(name); if (!c || c.rev!==rev){ const f=await fs.read(name); if (!f) continue; c={rev:f.rev, head:JSON.parse(f.text)}; heads.set(name,c); }
+        out.push(c.head); }
+      return out;
+    },
+    async putHead(id, head, base){
+      const name=N.head(id);
+      for (let tries=0; tries<3; tries++){
+        const f=await fs.read(name), cur=f?JSON.parse(f.text):null;
+        if (cur && cur.rev!==base) return {conflict:cur};
+        try{ const rev=await fs.write(name, JSON.stringify(head), f?f.rev:null); heads.set(name,{rev,head}); }
+        catch(e){ if (e instanceof Conflict) continue; throw e; }
+        if (head.deleted){ await drop(`ver.${id}.`); await drop(`pack.${id}.`); }
+        else if (cur && cur.packHash && cur.packHash!==head.packHash) await fs.remove(N.pack(id,cur.packHash));
+        return {ok:true};
+      }
+      const f=await fs.read(name); return {conflict:f?JSON.parse(f.text):{rev:0}};
+    },
+    getVer: async (id,h) => { const f=await fs.read(N.ver(id,h)); return f ? f.text : null; },
+    putVer: (id,h,md) => fs.write(N.ver(id,h), md),
+    getPack: async (id,h) => { const f=await fs.read(N.pack(id,h)); return f ? JSON.parse(f.text) : null; },
+    putPack: (id,h,pk) => fs.write(N.pack(id,h), JSON.stringify(pk)),
+    listDecks: async () => [...await fs.list()].filter(([n])=>/^deck\.[a-z0-9]+\.json$/.test(n)).map(([n,rev])=>({id:n.slice(5,-5), etag:rev})),
+    getDeck: async id => { const f=await fs.read(N.deck(id)); return f ? JSON.parse(f.text) : null; },
+    putDeck: (id, body) => fs.write(N.deck(id), JSON.stringify(body)),
+  };
+}
+
+/* ---- sign-in for the cloud drives ---- */
+// Both redirect away and back. The OAuth state is kept in sessionStorage; tokens in localStorage (they reach only
+// the Academic Reader folder, and they are revoked by disconnecting here or in the Dropbox or Google account).
+const b64url = u8 => btoa(String.fromCharCode(...u8)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const redirectUri = () => location.origin + location.pathname;
+const jget = k => { try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch{ return null; } };
+const jset = (k,v) => v==null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v));
+const Auth = {
+  dropbox: {
+    key:'gloss.sync.dropbox', label:'Dropbox', where:'Apps › Academic Reader in your Dropbox',
+    ready: () => !!CONFIG.dropboxAppKey,
+    connected(){ return !!jget(this.key); },
+    async start(){
+      const verifier=b64url(crypto.getRandomValues(new Uint8Array(48))), state=b64url(crypto.getRandomValues(new Uint8Array(16)));
+      const challenge=b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
+      sessionStorage.setItem('gloss.oauth', JSON.stringify({provider:'dropbox', state, verifier}));
+      location.href='https://www.dropbox.com/oauth2/authorize?'+new URLSearchParams({client_id:CONFIG.dropboxAppKey, response_type:'code', code_challenge:challenge,
+        code_challenge_method:'S256', redirect_uri:redirectUri(), token_access_type:'offline', state});
+    },
+    async finish(q, saved){
+      const r=await fetch('https://api.dropboxapi.com/oauth2/token',{method:'POST', body:new URLSearchParams({grant_type:'authorization_code', code:q.get('code'),
+        client_id:CONFIG.dropboxAppKey, code_verifier:saved.verifier, redirect_uri:redirectUri()})});
+      const j=await r.json(); if (!r.ok || !j.refresh_token) throw new Error(j.error_description||j.error||'Dropbox did not return a token');
+      jset(this.key, {refresh:j.refresh_token, access:j.access_token, exp:Date.now()+(j.expires_in-60)*1000});
+    },
+    async token(force){
+      const t=jget(this.key); if (!t) throw new NeedsAuth('Connect Dropbox to sync.');
+      if (!force && t.access && Date.now()<t.exp) return t.access;
+      const r=await fetch('https://api.dropboxapi.com/oauth2/token',{method:'POST', body:new URLSearchParams({grant_type:'refresh_token', refresh_token:t.refresh, client_id:CONFIG.dropboxAppKey})});
+      const j=await r.json().catch(()=>({}));
+      if (!r.ok){ if (r.status===400||r.status===401) throw new NeedsAuth('Dropbox access was withdrawn. Connect Dropbox again.'); throw new Error('Could not reach Dropbox ('+r.status+')'); }
+      jset(this.key, {...t, access:j.access_token, exp:Date.now()+(j.expires_in-60)*1000}); return j.access_token;
+    },
+    async disconnect(){ const t=jget(this.key); jset(this.key,null);
+      if (t && t.access) fetch('https://api.dropboxapi.com/2/auth/token/revoke',{method:'POST',headers:{authorization:'Bearer '+t.access}}).catch(()=>{}); },
   },
+  gdrive: {
+    key:'gloss.sync.gdrive', label:'Google Drive', where:'the Academic Reader folder in your Google Drive',
+    ready: () => !!CONFIG.googleClientId,
+    connected(){ return !!jget(this.key); },
+    start(silent){
+      const state=b64url(crypto.getRandomValues(new Uint8Array(16)));
+      sessionStorage.setItem('gloss.oauth', JSON.stringify({provider:'gdrive', state, silent:!!silent}));
+      location.href='https://accounts.google.com/o/oauth2/v2/auth?'+new URLSearchParams({client_id:CONFIG.googleClientId, redirect_uri:redirectUri(), response_type:'token',
+        scope:'https://www.googleapis.com/auth/drive.file', include_granted_scopes:'true', state, ...(silent?{prompt:'none'}:{})});
+    },
+    async finish(q){
+      if (q.get('error')) throw new NeedsAuth(q.get('error')==='access_denied'?'Google Drive was not connected.':'Google Drive needs you to sign in again.');
+      const t=jget(this.key)||{}; jset(this.key, {...t, access:q.get('access_token'), exp:Date.now()+(+q.get('expires_in')-60)*1000});
+    },
+    async token(){ const t=jget(this.key); if (!t) throw new NeedsAuth('Connect Google Drive to sync.');
+      if (t.access && Date.now()<t.exp) return t.access;
+      throw new NeedsAuth('Google Drive needs a quick reconnect (Google asks every hour).'); },
+    async disconnect(){ const t=jget(this.key); jset(this.key,null); localStorage.removeItem('gloss.sync.gdrive.folder');
+      if (t && t.access) fetch('https://oauth2.googleapis.com/revoke?token='+encodeURIComponent(t.access),{method:'POST'}).catch(()=>{}); },
+  },
+};
+// Called at start-up: finish a sign-in that has just redirected back here, and tidy the address bar.
+async function finishSignIn(){
+  let saved=null; try{ saved=JSON.parse(sessionStorage.getItem('gloss.oauth')||'null'); }catch{}
+  if (!saved) return;
+  const q = saved.provider==='gdrive' ? new URLSearchParams(location.hash.slice(1)) : new URLSearchParams(location.search);
+  if (!q.get('state') && !q.get('error')) return;
+  sessionStorage.removeItem('gloss.oauth'); history.replaceState(null,'',location.pathname);
+  if (q.get('state')!==saved.state) return toast('That sign-in did not match; try connecting again.', 6000, true);
+  try{
+    if (q.get('error') && saved.provider==='dropbox') throw new Error(q.get('error')==='access_denied'?'Dropbox was not connected.':q.get('error_description')||q.get('error'));
+    await Auth[saved.provider].finish(q, saved);
+    if (P.syncProvider!==saved.provider){ P.syncProvider=saved.provider; savePrefs(); await resetSyncState(); }
+    if (!saved.silent) toast(`${Auth[saved.provider].label} connected. Syncing…`);
+  }catch(e){ if (!saved.silent) toast(e.message, 6000, true); Log.add('warn','Sync sign-in', e.message); if (saved.silent) sessionStorage.setItem('gloss.gdrive.silentFailed','1'); }
+}
+
+function dropboxStore(){
+  const A=Auth.dropbox;
+  const call = async (url, init, retry=true) => {
+    const r=await fetch(url, {...init, headers:{...init.headers, authorization:'Bearer '+await A.token()}});
+    if (r.status===401 && retry){ await A.token(true); return call(url, init, false); }
+    if (r.status===429 || r.status>=500) throw new Error('Dropbox is busy ('+r.status+'); will retry.');
+    return r;
+  };
+  // Dropbox-API-Arg must be ASCII: escape anything else as \uXXXX
+  const arg = o => JSON.stringify(o).replace(/[\u007f-￿]/g, c=>'\\u'+c.charCodeAt(0).toString(16).padStart(4,'0'));
+  const rpc = (path, body) => call('https://api.dropboxapi.com/2/'+path, {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body)});
+  const err = async r => { const j=await r.json().catch(()=>({})); return j.error_summary||('Dropbox error '+r.status); };
+  return {
+    async list(){
+      const m=new Map(); let r=await rpc('files/list_folder',{path:'', recursive:false, limit:2000});
+      for(;;){ if (!r.ok) throw new Error(await err(r)); const j=await r.json();
+        for (const e of j.entries) if (e['.tag']==='file') m.set(e.name, e.rev);
+        if (!j.has_more) break; r=await rpc('files/list_folder/continue',{cursor:j.cursor}); }
+      return m;
+    },
+    async read(name){
+      const r=await call('https://content.dropboxapi.com/2/files/download',{method:'POST', headers:{'Dropbox-API-Arg':arg({path:'/'+name})}});
+      if (r.status===409) return null; if (!r.ok) throw new Error(await err(r));
+      const meta=JSON.parse(r.headers.get('Dropbox-API-Result')||'{}'); return {text:await r.text(), rev:meta.rev};
+    },
+    async write(name, text, expect){
+      const mode = expect===undefined ? 'overwrite' : expect===null ? 'add' : {'.tag':'update', update:expect};
+      const r=await call('https://content.dropboxapi.com/2/files/upload',{method:'POST', headers:{'content-type':'application/octet-stream',
+        'Dropbox-API-Arg':arg({path:'/'+name, mode, autorename:false, mute:true, strict_conflict:true})}, body:new TextEncoder().encode(text)});
+      if (r.status===409){ const e=await err(r); if (/conflict/.test(e)) throw new Conflict(e); throw new Error(e); }
+      if (!r.ok) throw new Error(await err(r));
+      return (await r.json()).rev;
+    },
+    async remove(name){ const r=await rpc('files/delete_v2',{path:'/'+name}); if (!r.ok && r.status!==409) throw new Error(await err(r)); },
+  };
+}
+
+function driveStore(){
+  const A=Auth.gdrive, API='https://www.googleapis.com/drive/v3/files', UP='https://www.googleapis.com/upload/drive/v3/files';
+  const ids=new Map();   // name -> file id
+  const call = async (url, init={}) => {
+    const r=await fetch(url, {...init, headers:{...(init.headers||{}), authorization:'Bearer '+await A.token()}});
+    if (r.status===401){ const t=jget(A.key); if (t) jset(A.key,{...t, exp:0}); throw new NeedsAuth('Google Drive needs a quick reconnect (Google asks every hour).'); }
+    if (r.status===429 || r.status>=500) throw new Error('Google Drive is busy ('+r.status+'); will retry.');
+    return r;
+  };
+  const need = async r => { if (!r.ok){ const j=await r.json().catch(()=>({})); throw new Error('Google Drive: '+((j.error&&j.error.message)||r.status)); } return r; };
+  async function folder(){
+    let id=localStorage.getItem('gloss.sync.gdrive.folder'); if (id) return id;
+    const q=`name='${SYNC_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+    const j=await (await need(await call(`${API}?${new URLSearchParams({q, fields:'files(id)', spaces:'drive'})}`))).json();
+    id = j.files[0] ? j.files[0].id : (await (await need(await call(API+'?fields=id',{method:'POST', headers:{'content-type':'application/json'},
+      body:JSON.stringify({name:SYNC_FOLDER, mimeType:'application/vnd.google-apps.folder'})}))).json()).id;
+    localStorage.setItem('gloss.sync.gdrive.folder', id); return id;
+  }
+  const version = async id => { const r=await call(`${API}/${id}?fields=version,trashed`); if (r.status===404) return null; const j=await (await need(r)).json(); return j.trashed?null:String(j.version); };
+  const find = async name => { if (!ids.has(name)) await store.list(); return ids.get(name); };
+  const store = {
+    async list(){
+      const fid=await folder(), m=new Map(); ids.clear(); let page='';
+      do { const r=await call(`${API}?${new URLSearchParams({q:`'${fid}' in parents and trashed=false`, fields:'nextPageToken,files(id,name,version)', pageSize:'1000', ...(page?{pageToken:page}:{})})}`);
+        if (r.status===404){ localStorage.removeItem('gloss.sync.gdrive.folder'); throw new Error('The Academic Reader folder was removed from Google Drive; it will be made again.'); }
+        const j=await (await need(r)).json();
+        for (const f of j.files){ if (!ids.has(f.name) || +f.version>+m.get(f.name)){ ids.set(f.name,f.id); m.set(f.name,String(f.version)); } }
+        page=j.nextPageToken; } while (page);
+      return m;
+    },
+    async read(name){
+      const id=await find(name); if (!id) return null;
+      const rev=await version(id); if (rev==null){ ids.delete(name); return null; }
+      const r=await call(`${API}/${id}?alt=media`); if (r.status===404){ ids.delete(name); return null; }
+      return {text:await (await need(r)).text(), rev};
+    },
+    // Drive has no conditional write, so the revision is checked just before writing. The window is small.
+    async write(name, text, expect){
+      const id=await find(name);
+      if (id){
+        if (expect===null) throw new Conflict('exists');
+        if (expect!==undefined && await version(id)!==expect) throw new Conflict('changed');
+        const j=await (await need(await call(`${UP}/${id}?uploadType=media&fields=version`,{method:'PATCH', headers:{'content-type':'text/plain; charset=utf-8'}, body:text}))).json();
+        return String(j.version);
+      }
+      if (expect) throw new Conflict('gone');
+      const b='ar'+uid(), meta=JSON.stringify({name, parents:[await folder()]});
+      const body=`--${b}\r\ncontent-type: application/json; charset=utf-8\r\n\r\n${meta}\r\n--${b}\r\ncontent-type: text/plain; charset=utf-8\r\n\r\n${text}\r\n--${b}--`;
+      const j=await (await need(await call(`${UP}?uploadType=multipart&fields=id,version`,{method:'POST', headers:{'content-type':`multipart/related; boundary=${b}`}, body}))).json();
+      ids.set(name, j.id); return String(j.version);
+    },
+    async remove(name){ const id=await find(name); if (!id) return; const r=await call(`${API}/${id}`,{method:'DELETE'}); ids.delete(name); if (!r.ok && r.status!==404) await need(r); },
+  };
+  return store;
+}
+function makeBackend(p){ return p==='server' ? serverBackend() : p==='dropbox' ? fileBackend(dropboxStore()) : p==='gdrive' ? fileBackend(driveStore()) : null; }
+// Changing where data syncs to: forget the old revisions, so everything is merged into the new place from scratch.
+async function resetSyncState(){
+  for (const d of await DB.all()){ if (d.deleted){ await DB.del(d.id); continue; } delete d.sync; d.dirty=true; await DB.put(d); if (DOC && DOC.id===d.id) DOC=d; }
+  for (const k of await Decks.all()){ delete k.etag; k.dirty=true; await Decks.put(k); }
+}
+
+/* ============ sync: merging ============ */
+const Sync = {
+  B:null, needsAuth:false, busy:new Set(), timers:{}, last:null, error:'', running:false,
+  on(){ return !!this.B && !this.needsAuth; },
+  // Does this site run the sync function with a key set? (Only a copy someone deploys for themselves does.)
+  probe(){ return this._probe ||= fetch('/api/sync/ping',{headers:P.syncToken?{'x-sync-token':P.syncToken}:{}})
+    .then(r=>(r.headers.get('content-type')||'').includes('json') && [200,401].includes(r.status)).catch(()=>false); },
+  provider(){ return P.syncProvider||''; },
+  fail(e, where){ if (e instanceof NeedsAuth){ this.needsAuth=true; this.error=e.message; } else { this.error=e.message; Log.add('warn', where, e.message); } },
   async init(){
     if (STATIC) return;
-    try { const r=await fetch('/api/sync/ping',{headers:P.syncToken?{'x-sync-token':P.syncToken}:{}}); const js=(r.headers.get('content-type')||'').includes('json');
-      this.available = js && [200,401].includes(r.status); this.needsKey = r.status===401; } catch(e){ this.available=false; }
-    if (!this.available) return;
-    this.listen();
-    if (this.needsKey) { this.error='Enter your sync key in Settings to sync this device.'; return; }
+    this.B=null; this.needsAuth=false; this.error='';
+    const p=this.provider(); if (!p) return;
+    if (p!=='server' && !Auth[p].ready()){ this.error=`${Auth[p].label} sync is not set up on this site.`; return; }
+    if (p!=='server' && !Auth[p].connected()){ this.needsAuth=true; this.error=`Connect ${Auth[p].label} to sync.`; return; }
+    this.B=makeBackend(p); this.listen();
+    // Google gives browser apps hour-long access with no refresh: at start-up, renew it quietly by a quick redirect.
+    if (p==='gdrive'){ const t=jget(Auth.gdrive.key); if (t && !(t.access && Date.now()<t.exp) && !sessionStorage.getItem('gloss.gdrive.silentFailed')) return Auth.gdrive.start(true); }
     await this.pullAll();
+  },
+  async connect(p){
+    if (p==='server'){ P.syncProvider='server'; savePrefs(); await resetSyncState(); return this.init(); }
+    if (Auth[p]) return Auth[p].start();
+  },
+  async disconnect(){
+    const p=this.provider(); if (p && Auth[p]) await Auth[p].disconnect();
+    P.syncProvider=''; savePrefs(); this.B=null; this.needsAuth=false; this.error='';
   },
   listened:false,
   listen(){ if (this.listened) return; this.listened=true;
@@ -2169,28 +2735,27 @@ const Sync = {
     try{
       d.sync ||= {rev:0, vers:{}, packHash:''};
       if (!d.deleted){
-        for (const v of d.versions){ const h=vh(v.md); if (!d.sync.vers[h]){ const r=await this.api(`ver/${d.id}/${h}`,{method:'PUT',body:v.md}); if (!r.ok) throw new Error('upload failed '+r.status); d.sync.vers[h]=1; } }
+        for (const v of d.versions){ const h=vh(v.md); if (!d.sync.vers[h]){ await this.B.putVer(d.id, h, v.md); d.sync.vers[h]=1; } }
         const ph=d.pack?packHash(d.pack):'';
-        if (ph && ph!==d.sync.sentPack){ const r=await this.api(`pack/${d.id}/${ph}`,{method:'PUT',body:JSON.stringify(d.pack)}); if (!r.ok) throw new Error('upload failed '+r.status); d.sync.sentPack=ph; }
+        if (ph && ph!==d.sync.sentPack){ await this.B.putPack(d.id, ph, d.pack); d.sync.sentPack=ph; }
       }
       const head=this.headOf(d, d.sync.rev+1);
-      const r=await this.api(`head/${d.id}`,{method:'PUT',headers:{'content-type':'application/json','x-base-rev':String(d.sync.rev)},body:JSON.stringify(head)});
-      if (r.status===409){ const remote=await r.json(); this.busy.delete(d.id); await this.merge(d, remote); if (depth<3) return this.push(d, depth+1); return; }
-      if (!r.ok) throw new Error('sync failed '+r.status);
+      const r=await this.B.putHead(d.id, head, d.sync.rev);
+      if (r.conflict){ this.busy.delete(d.id); await this.merge(d, r.conflict); if (depth<3) return this.push(d, depth+1); return; }
       d.sync.rev=head.rev; d.sync.packHash=head.packHash;
       if ((d.editSeq||0)===seq) d.dirty=false;
       if (d.deleted) await DB.del(d.id); else await DB.put(d);
       this.last=Date.now(); this.error='';
-    }catch(e){ this.error=e.message; Log.add('warn','Sync upload', e.message, {doc:d.title}); }
+    }catch(e){ this.fail(e, 'Sync upload'); }
     finally{ this.busy.delete(d.id); }
   },
   async fetchVersions(d, remote){
     const have=new Set(d.versions.map(v=>vh(v.md)));
     for (const v of remote.versions||[]){ if (have.has(v.h)) { d.sync.vers[v.h]=1; continue; }
-      const r=await this.api(`ver/${d.id}/${v.h}`); if (!r.ok) continue; d.versions.push({md:await r.text(), at:v.at, name:v.name}); d.sync.vers[v.h]=1; have.add(v.h); }
+      const md=await this.B.getVer(d.id, v.h); if (md==null) continue; d.versions.push({md, at:v.at, name:v.name}); d.sync.vers[v.h]=1; have.add(v.h); }
     d.versions.sort((a,b)=>a.at-b.at);
   },
-  async fetchPack(d, remote){ if (!remote.packHash) return null; const r=await this.api(`pack/${d.id}/${remote.packHash}`); return r.ok? await r.json() : null; },
+  async fetchPack(d, remote){ return remote.packHash ? this.B.getPack(d.id, remote.packHash) : null; },
   // Remote changed and so did we: keep both sides' text versions and questions; the newer guide wins otherwise.
   async merge(d, remote){
     d.sync ||= {rev:0, vers:{}, packHash:''};
@@ -2213,10 +2778,10 @@ const Sync = {
     touch(d); await DB.put(d);
   },
   async pullAll(manual){
-    if (!this.on() || this.running) return; this.running=true;
+    if (!this.on() || this.running) { if (manual && !this.on()) toast(this.error||'Sync is off.'); return; }
+    this.running=true;
     try{
-      const r=await this.api('list'); if (!r.ok) throw new Error('sync failed '+r.status);
-      const heads=await r.json(); const seen=new Set(); let changedOpen=false, added=0;
+      const heads=await this.B.listHeads(); const seen=new Set(); let changedOpen=false, added=0;
       for (const remote of heads){
         seen.add(remote.id);
         const open = DOC && DOC.id===remote.id;
@@ -2236,14 +2801,14 @@ const Sync = {
         } else { await this.merge(d, remote); this.schedule(d, 500); }
         if (open) changedOpen=true;
       }
-      // push anything this device has that the server lacks or that changed locally
+      // push anything this device has that the other side lacks or that changed locally
       for (const d of await DB.all()){ const live = DOC && DOC.id===d.id ? DOC : d; if (!seen.has(d.id) || live.dirty) await this.push(live); }
       await this.pullDecks();
-      this.last=Date.now(); this.error='';
+      this.last=Date.now(); if (!this.needsAuth) this.error='';
       if (changedOpen){ if (DOC){ DOC=await DB.get(DOC.id); } renderDoc(true); }
       if (added && !DOC){ const all=(await DB.all()).filter(x=>!x.deleted).sort((a,b)=>b.updated-a.updated); if (all[0]) openDoc(all[0].id); }
       if (manual) toast(added?`Synced; ${added} text${added>1?'s':''} added from your other devices.`:'Synced.');
-    }catch(e){ this.error=e.message; if (manual) toast(e.message,5000); Log.add('warn','Sync download', e.message); }
+    }catch(e){ this.fail(e, 'Sync download'); if (manual) toast(e.message,5000); }
     finally{ this.running=false; }
   },
   deckTimers:{},
@@ -2258,18 +2823,17 @@ const Sync = {
     if (!this.on()) return; const deck=await Decks.get(id); if (!deck) return;
     try{
       const {etag, dirty, ...body}=deck;
-      const r=await this.api(`deck/${id}`,{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify(body)}); if (!r.ok) throw new Error('deck upload failed '+r.status);
-      const j=await r.json(); const cur=await Decks.get(id); if (!cur) return;
-      cur.etag=j.etag; if (cur.mod===deck.mod) cur.dirty=false; if (cur.deleted) await Decks.del(id); else await Decks.put(cur);
-    }catch(e){ this.error=e.message; Log.add('warn','Sync flashcards', e.message); }
+      const tag=await this.B.putDeck(id, body);
+      const cur=await Decks.get(id); if (!cur) return;
+      cur.etag=tag; if (cur.mod===deck.mod) cur.dirty=false; if (cur.deleted) await Decks.del(id); else await Decks.put(cur);
+    }catch(e){ this.fail(e, 'Sync flashcards'); }
   },
   async pullDecks(){
-    const r=await this.api('decks'); if (!r.ok) throw new Error('deck sync failed '+r.status);
-    const remote=await r.json(); const seen=new Set();
+    const remote=await this.B.listDecks(); const seen=new Set();
     for (const {id, etag} of remote){ seen.add(id);
       const local=await Decks.get(id);
       if (local && local.etag===etag){ if (local.dirty) await this.pushDeck(id); continue; }
-      const g=await this.api(`deck/${id}`); if (!g.ok) continue; const rd=await g.json();
+      const rd=await this.B.getDeck(id); if (!rd) continue;
       if (rd.deleted){ if (local) await Decks.del(id); continue; }
       const merged=this.mergeDeck(local, rd); merged.etag=etag;
       const localNewer = local && local.cards.some(c=>{ const o=rd.cards.find(x=>x.id===c.id); return !o || (c.mod||0)>(o.mod||0); });
@@ -2283,11 +2847,13 @@ const Sync = {
     if (this.on() && d.sync && d.sync.rev){ d.deleted=true; touch(d); await DB.put(d); await this.push(d); }
     else await DB.del(d.id);
   },
-  statusLine(){
-    const t = !this.available ? 'Sync is off on this device.' : this.needsKey ? 'Enter your sync key in Settings to sync this device.' : P.sync===false ? 'Sync is turned off in Settings.' :
-      this.error ? 'Sync problem: '+this.error : this.last ? `Synced ${Math.max(0,Math.round((Date.now()-this.last)/60000))} min ago.` : 'Syncing…';
-    return h('p',{class:'muted small',style:'margin:10px 0 0'}, t);
-  }
+  statusText(){
+    const p=this.provider(), where=p==='server'?'this site’s server':p?Auth[p].label:'';
+    return !p ? 'Sync is off: everything stays on this device.' : this.error ? `${where}: ${this.error}` :
+      this.last ? `Synced with ${where} ${Math.max(0,Math.round((Date.now()-this.last)/60000))} min ago.` : `Syncing with ${where}…`;
+  },
+  statusLine(){ return h('p',{class:'muted small',style:'margin:10px 0 0'}, this.statusText(),
+    this.needsAuth && this.provider() && this.provider()!=='server' ? [' ', h('a',{href:'#',onclick:e=>{ e.preventDefault(); Sync.connect(Sync.provider()); }},'Reconnect')] : null); }
 };
 
 /* ============ flashcards ============ */
@@ -2547,8 +3113,10 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyPrefs)
     const hb=location.hash.slice(1); let saved=null; try{ saved=localStorage.getItem('gloss.static.'+DOC.id); }catch{}
     if (BY.has(hb)) setTimeout(()=>gotoBlock(hb),50); else if (saved && BY.has(saved)){ DOC.posBid=saved; restorePos(DOC); }
     addEventListener('hashchange',()=>{ const b=location.hash.slice(1); if (BY.has(b)) gotoBlock(b); });
+    staticBadge();
     return;
   }
+  await finishSignIn(); receiveFromPage();
   const last=localStorage.getItem('gloss.last');
   if (last && await DB.get(last)) await openDoc(last); else renderDoc();
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});

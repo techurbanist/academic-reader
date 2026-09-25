@@ -11,3 +11,9 @@
   for = "/index.html"
   [headers.values]
     Cache-Control = "no-cache"
+
+# Asked for by the "Deploy to Netlify" button. All optional; see README.
+[template.environment]
+  SYNC_TOKEN = "Optional: a long random key, to sync your devices through this site"
+  DROPBOX_APP_KEY = "Optional: your Dropbox app key, to offer Dropbox sync"
+  GOOGLE_CLIENT_ID = "Optional: your Google OAuth client ID, to offer Google Drive sync"
