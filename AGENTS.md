@@ -39,9 +39,12 @@ Repo (public): `git@github.com:techurbanist/academic-reader.git`.
 public/index.html        the whole client, about 3,000 lines: HTML, CSS, one script, no build step, no framework
 public/sw.js             service worker: page network-first, CDN libs and fonts stale-while-revalidate, /api/* never cached
 public/samples/attention.json   the sample's recipe and guide (see Sample paper)
+public/artefacts/        shared "web page for readers" exports the owner publishes, e.g. /artefacts/no-further-fact.html
 public/manifest.webmanifest, icon-192.png, icon-512.png
 netlify/functions/sync.mts   optional sync API on Netlify Blobs, for a copy someone runs themselves
-scripts/headers.mjs      writes public/_headers: CSP with the sha256 of the inline script, nosniff, referrer policy
+scripts/headers.mjs      writes public/_headers: a CSP per HTML page with the sha256 of that page's inline script
+                         (app pages share one; each file in artefacts/ gets its own, since an older app version may
+                         have exported it), plus nosniff and referrer policy for everything
 build.sh                 stamps __BUILD_TIME__, __PUBLIC_URL__, __DROPBOX_APP_KEY__, __GOOGLE_CLIENT_ID__ from env,
                          writes public/version.json, then runs scripts/headers.mjs (so the CSP hash matches the stamped page)
 netlify.toml             publish = public, command = bash build.sh, no-cache headers, Deploy-button env prompts
@@ -165,6 +168,8 @@ Models: `P.mainModel` = `claude-sonnet-5`, `P.fastModel` = `claude-haiku-4-5-202
 ⋮ → Export this text → Web page for readers… writes one self-contained `.html` file for sharing (for example from a Substack post). `staticHtml` fetches the app's own `index.html`, removes the manifest link, inlines the icon, adds `<title>`, description and Open Graph tags, and inserts `<script id="gloss-static" type="application/json">` holding `{schema:'gloss-static/1', intro, doc}` (latest version only, no `jobs`, saved questions only if ticked; `<` escaped as `\u003c`).
 
 When that block is present, `STATIC` is set and the same code runs read-only: `DB` and `Decks` are in-memory stubs (the reading place goes to `localStorage['gloss.static.<id>']`, and no IndexedDB is opened), `claudeStream` throws, `Sync.init` returns, and no service worker is registered. The library button, Ask, deepen buttons, flashcards, settings and end-of-text navigation are hidden. The ⋮ menu becomes `staticMenu`. A dismissible "How to read this" box (`staticIntro`) carries the owner's note and an AI-authorship notice. Paragraph cards offer "Copy a link to it" (`#<bid>` deep links). Reference cards still look up OpenAlex, and person cards still look up Wikipedia; neither needs a key. When changing a feature that needs a key or the server, keep it out of static mode.
+
+To publish an export on the app's own site, drop the file into `public/artefacts/` and push; the build gives it a matching CSP. Only put the owner's own exports there: they run on the app's origin, so they share its browser storage (including the encrypted key vault).
 
 A dismissible "Made with Academic Reader" pill (`staticBadge`, `appCard`) links to `CONFIG.publicUrl` (the public app by default, so pages exported from a self-hosted copy still point there). "Open this paper in Academic Reader" (`openInApp`) opens `publicUrl + '#receive'`. The app (`receiveFromPage`) posts `ar-ready` to `window.opener` until the page answers with `{type:'ar-bundle', bundle}`, accepts it only from `window.opener`, and asks before adding it. A paper it already has, by text hash, just opens.
 

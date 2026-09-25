@@ -363,7 +363,7 @@ function wrapRange(root, start, end, make){
 // (a local copy) count as empty: Dropbox and Google Drive sync are then offered as "not set up here".
 const CONFIG = (()=>{ const v=x=>/^__.*__$/.test(x)?'':x;
   return { publicUrl: v('__PUBLIC_URL__') || 'https://academic-reader.initialloop.com', dropboxAppKey: v('__DROPBOX_APP_KEY__'), googleClientId: v('__GOOGLE_CLIENT_ID__') }; })();
-const APP_VERSION = '2026-09-25.14';
+const APP_VERSION = '2026-09-25.15';
 const APP_BUILD = '__BUILD_TIME__';   // replaced with the UTC deploy time by the Netlify build
 const buildLabel = b => /^__/.test(b) ? 'local copy' : `${b.replace('T',' ').replace(/Z$/,'')} UTC`;
 const Log = {
@@ -1107,6 +1107,7 @@ function openSettings(){ fillVersion();
     choice('dropbox','Dropbox','Uses the folder Apps › Academic Reader.'),
     choice('gdrive','Google Drive','Uses a folder called Academic Reader. Google asks you to reconnect now and then.'),
     srvSlot,
+    h('p',{class:'muted small',style:'margin:8px 0 0'},'Sync is optional. Without it, move your library between devices with Download a backup and Restore a backup, under Your data below.'),
     h('div',{class:'syncstat'}, Sync.statusLine(), prov?h('div',{class:'row',style:'margin-top:8px'}, h('button',{class:'btn',onclick:()=>Sync.pullAll(true)},'Sync now')):null));
   // this site's own server, shown only where the site has one (the owner's deployment)
   Sync.probe().then(ok=>{ if (!ok && prov!=='server') return;
