@@ -1,5 +1,5 @@
 # Builds the app and deploys it to the Cloudflare Worker "academic-reader" on every push to main.
-# Needs repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID, and repository variables
+# Needs, in the GitHub environment "production", secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID, and variables
 # DROPBOX_APP_KEY and GOOGLE_CLIENT_ID (public identifiers; see README). Without the token, the deploy is skipped.
 name: Deploy to Cloudflare
 on:
@@ -12,6 +12,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: read
     env:
