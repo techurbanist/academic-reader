@@ -1,5 +1,5 @@
 // Gloss service worker: app shell cache-first, libraries and fonts stale-while-revalidate.
-const SHELL = 'gloss-shell-v9', LIBS = 'gloss-libs-v1';
+const SHELL = 'gloss-shell-v10', LIBS = 'gloss-libs-v1';
 const SHELL_FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(SHELL).then(c => c.addAll(SHELL_FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => ![SHELL, LIBS].includes(k)).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

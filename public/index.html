@@ -77,6 +77,14 @@ button{cursor:pointer}
 .m-note{background:color-mix(in srgb,var(--c-note) 13%,transparent);box-shadow:0 1.5px 0 color-mix(in srgb,var(--c-note) 55%,transparent)}
 [data-t]:hover{background-color:var(--shade)}
 
+/* static edition */
+.static #bLib,.static #askFab{display:none!important}
+.intro{margin:0 0 2em;padding:14px 16px;border:1px solid var(--rule);border-radius:12px;background:var(--surface);font:15px/1.5 var(--ui)}
+.intro h2{margin:0 0 6px!important;font:600 16px/1.3 var(--ui)!important}
+.intro .note{margin:0 0 10px}
+.intro ul{margin:0 0 10px;padding-left:1.2em}
+.intro li{margin:0 0 4px!important}
+.intro .key{display:inline-block;width:.8em;height:.8em;border-radius:2px;vertical-align:-.05em;margin-right:2px}
 /* empty */
 .empty{max-width:30em;margin:12vh auto;padding:0 24px;text-align:left}
 .empty h2{font:600 26px/1.2 var(--read-font);margin:0 0 .5em}
@@ -320,7 +328,7 @@ function wrapRange(root, start, end, make){
 /* ============ error log ============ */
 // A rolling log of errors and warnings, kept on this device so problems can be reported precisely.
 // Never records the API key, sync key, or document text.
-const APP_VERSION = '2026-09-25.8';
+const APP_VERSION = '2026-09-25.9';
 const APP_BUILD = '__BUILD_TIME__';   // replaced with the UTC deploy time by the Netlify build
 const buildLabel = b => /^__/.test(b) ? 'local copy' : `${b.replace('T',' ').replace(/Z$/,'')} UTC`;
 const Log = {
@@ -349,6 +357,17 @@ function openLog(){
       h('button',{class:'btn',onclick:()=>{ Log.clear(); pre.textContent='No errors recorded.'; }},'Clear'))]);
 }
 
+/* ============ static edition ============ */
+// A page made with "Web page for readers" carries its text and guide in <script id="gloss-static">. It runs read-only:
+// no library, API key, Ask, flashcards or sync. Nothing is stored except reading preferences and the reader's place.
+const STATIC = (()=>{ const el=document.getElementById('gloss-static'); if (!el) return null; try{ return JSON.parse(el.textContent); }catch{ return null; } })();
+if (STATIC) document.documentElement.classList.add('static');
+const staticStore = () => ({
+  get: async id => STATIC && STATIC.doc.id===id ? STATIC.doc : null,
+  all: async () => STATIC ? [STATIC.doc] : [],
+  put: async d => { try{ if (d && d.posBid) localStorage.setItem('gloss.static.'+d.id, d.posBid); }catch{} },
+  del: async () => {} });
+
 /* ============ storage ============ */
 const Store = (()=>{
   let dbp;
@@ -359,7 +378,7 @@ const Store = (()=>{
   const api = name => ({ get:id=>tx(name,'readonly',s=>s.get(id)), put:d=>tx(name,'readwrite',s=>s.put(d)), del:id=>tx(name,'readwrite',s=>s.delete(id)), all:()=>tx(name,'readonly',s=>s.getAll()) });
   return { docs:api('docs'), decks:api('decks') };
 })();
-const DB = Store.docs, Decks = Store.decks;
+const DB = STATIC ? staticStore() : Store.docs, Decks = STATIC ? {...staticStore(), get:async()=>null, all:async()=>[]} : Store.decks;
 const DEF_PREFS = {theme:'auto', font:'literata', fs:19, lh:1.65, measure:34, pad:20, layers:{moves:true,sigs:true,terms:true,people:true,refs:true,notes:true}, density:'para',
   mainModel:'claude-sonnet-5', fastModel:'claude-haiku-4-5-20251001', maxTokens:32000, guideEffort:'medium', askEffort:'high', openalexKey:'', unlockMins:60, ttsVoice:'', ttsRate:1, ttsSkipCites:true, ttsNotes:false,
   about:'I am a curious, intelligent reader. I work as a software engineer, so I am comfortable with technical and computing ideas. I am new to academic philosophy and to most sciences outside computing, so their jargon, people and conventions need explaining. Formal logic and maths need plain-language explanation.'};
@@ -416,6 +435,7 @@ function openKeySetup(resolve=()=>{}, reject=()=>{}){
 
 /* ============ Claude API (streaming) ============ */
 async function claudeStream(body, onDelta){
+  if (STATIC) throw new Error('This page is read-only.');
   const apiKey = await Vault.get();
   const res = await fetch('https://api.anthropic.com/v1/messages', {method:'POST',
     headers:{'content-type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
@@ -528,7 +548,11 @@ function termRegex(words, ci){
 let ENT = {terms:[], people:[]};
 function buildEntityIndex(){
   const pk=pack(); ENT={terms:[],people:[]}; if (!pk) return;
-  for (const t of pk.terms||[]){ const re=termRegex([t.term,...(t.aliases||[])], true); if (re) ENT.terms.push({id:t.id, re}); }
+  // A one-word capitalised short form of a longer term ("Data" for Commander Data, "Knowledge" for the knowledge
+  // consequence) must match case-sensitively, or every ordinary "data" and "knowledge" becomes a link.
+  const proper = (a,t) => a!==t.term && /^\p{Lu}\p{Ll}+$/u.test(a.trim());
+  for (const t of pk.terms||[]){ const al=[t.term,...(t.aliases||[])];
+    for (const [ws,ci] of [[al.filter(a=>!proper(a,t)),true],[al.filter(a=>proper(a,t)),false]]){ const re=termRegex(ws, ci); if (re) ENT.terms.push({id:t.id, re}); } }
   for (const p of pk.people||[]){ const re=termRegex([p.name,...(p.aliases||[])], false); if (re) ENT.people.push({id:p.id, re}); }
 }
 function entitySpans(text, opts={}){
@@ -542,6 +566,68 @@ function entitySpans(text, opts={}){
   for (const s of spans){ if (opts.exclude && opts.exclude===s.id) continue; if (taken.some(t=>s.s<t.e && t.s<s.e)) continue; taken.push(s); keep.push(s); }
   return keep;
 }
+/* A reference anchor's quote is often a whole clause ("Antony (2006) examines what follows…") or a group citation
+   shared with other works. Narrow the highlight to this work's own citation: "Antony (2006)", "(2018, p. 47)",
+   "Long et al. 2024" inside "(Butlin et al. 2023; Long et al. 2024)". With no year or name in the quote, no highlight. */
+const YEAR_SRC = '(?:1[5-9]\\d\\d|20\\d\\d)[a-z]?|forthcoming|n\\.d\\.';
+const bound = s => new RegExp(`(?<![\\p{L}\\p{N}])(?:${s})(?![\\p{L}\\p{N}])`, 'gu');
+function refYears(r){ return [...new Set((String(r.key||'')+' '+String(r.year||'')).match(bound(YEAR_SRC))||[])]; }
+function refNames(r){
+  return String(r.key||'').replace(bound(YEAR_SRC),' ').replace(/\bet al\.?/g,' ').split(/,|&|\band\b/)
+    .map(s=>s.trim()).filter(s=>/^\p{Lu}/u.test(s));
+}
+const NAME_TAIL = /^(?:['’]s)?(?:\s*(?:,|&|and\b|et al\.?|colleagues\b|\p{Lu}[\p{L}'’.-]*))*\s*$/u;
+function nameBefore(text, p, names){   // start of an author phrase that runs right up to p ("Han, Chalmers and Izmailov ")
+  const from=Math.max(0,p-90), pre=text.slice(from,p); let best=-1;
+  for (const n of names){ const re=bound(n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')); let m;
+    while ((m=re.exec(pre))) if (NAME_TAIL.test(pre.slice(m.index+m[0].length)) && (best<0||m.index<best)) best=m.index; }
+  return best<0?p:from+best;
+}
+function refSpan(text, q, r){
+  const m=findQuote(text,q); if (!m) return null;
+  const [qs,qe]=m, years=refYears(r), names=refNames(r), hits=[];
+  for (const y of years){ const re=bound(y.replace(/\./g,'\\.')); re.lastIndex=0; let x; const seg=text.slice(qs,qe); while ((x=re.exec(seg))) hits.push([qs+x.index, qs+x.index+x[0].length]); }
+  if (!hits.length){   // no year in the quote: the author's name, if it is there ("Seth argues…", "Macar and colleagues find…")
+    const seg=text.slice(qs,qe);
+    for (const n of names){ const re=bound(n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')); const x=re.exec(seg); if (!x) continue;
+      const s=qs+x.index, tail=text.slice(s+x[0].length).match(/^(?:,?\s+(?:and\s+)?\p{Lu}[\p{L}'’-]+)*(?:\s+et al\.|\s+and colleagues)?/u);
+      return [s, s+x[0].length+(tail?tail[0].length:0)]; }
+    return null;
+  }
+  hits.sort((a,b)=>a[0]-b[0]); const [ys,ye]=hits[0];
+  const open=text.lastIndexOf('(',ys), close=text.indexOf(')',ye);
+  if (open>=0 && close>=0 && text.lastIndexOf(')',ys)<open && !text.slice(ye,close).includes('(')){
+    // inside a parenthesis: split it into citations at ";" and at ", <year>", keep the pieces that hold this work's years
+    const inner=text.slice(open+1,close), cuts=[0];
+    const re=new RegExp(`;|,\\s*(?=(?:${YEAR_SRC})(?![\\p{L}\\p{N}]))`,'gu'); let x;
+    while ((x=re.exec(inner))) cuts.push(x.index, x.index+x[0].length);
+    cuts.push(inner.length);
+    const pieces=[]; for (let i=0;i<cuts.length;i+=2) pieces.push([open+1+cuts[i], open+1+cuts[i+1]]);
+    let mine=pieces.filter(([a,b])=>hits.some(([hs,he])=>hs>=a&&he<=b));
+    const named=mine.filter(([a,b])=>names.some(n=>text.slice(a,b).includes(n)));   // "Long et al. 2024; Birch 2024": Birch's is the named one
+    if (named.length) mine=mine.filter(pc=>named.includes(pc) || !/\p{Lu}/u.test(text.slice(...pc)));
+    if (!mine.length) mine=[pieces.find(([a,b])=>ys>=a&&ye<=b)];
+    const prose=t=>(t.match(/\b\p{Ll}{3,}\b/gu)||[]).filter(w=>!/^(and|see|compare|after|also|preprint|forthcoming|colleagues)$/.test(w)).length>1;
+    if (mine.length===pieces.length && !prose(inner)){ const s=/^\s*(?:\p{Lu}|see\b|cf\.|compare\b|after\b)/u.test(inner)?open:nameBefore(text,open,names); return [s,close+1]; }
+    let s=mine[0][0], e=mine[mine.length-1][1];
+    while (/\s/.test(text[s])) s++; while (e>s && /\s/.test(text[e-1])) e--;
+    const lead=text.slice(s,e).match(/^(?:see|cf\.|compare|after|also|e\.g\.,?|quoted in)\s+/i); if (lead) s+=lead[0].length;
+    return prose(text.slice(s,e)) ? bare(text,ys,ye,names) : [s,e];
+  }
+  return bare(text,ys,ye,names);
+}
+// a citation in running text ("Tononi et al. 2022", "the Animal Welfare (Sentience) Act 2022"), with any locator after it
+function bare(text, ys, ye, names){
+  const loc=text.slice(ye).match(/^,\s*(?:pp?\.|ch\.|§|n\.|preprint)[^;,)]*/);
+  return [nameBefore(text,ys,names), ye+(loc?loc[0].length:0)];
+}
+// Guide jobs sometimes give the paragraph number one off (often the heading above). Look nearby for the quote.
+function anchorBid(a){
+  const b=BY.get(a.bid); if (!b) return null;
+  if (!a.q || findQuote(b.text,a.q)) return a.bid;
+  for (const d of [1,2,-1]){ const o=BLOCKS[b.n-1+d]; if (o && findQuote(o.text,a.q)) return o.bid; }
+  return a.bid;
+}
 function renderDoc(keepScroll){
   const y = window.scrollY;
   const art=$('#doc');
@@ -549,11 +635,12 @@ function renderDoc(keepScroll){
   if (!DOC){ art.innerHTML=''; showEmpty(); return; }
   if (DOC.convert){ art.innerHTML=''; BLOCKS=[]; BY=new Map(); $('#docTitle').textContent=DOC.title; art.append(conversionPanel(DOC)); return; }
   BLOCKS = renderMd(currentMd(), art); BY = new Map(BLOCKS.map(b=>[b.bid,b])); blockNum.clear(); BLOCKS.forEach(b=>blockNum.set(b.n,b.bid));
-  $('#docTitle').textContent = DOC.title; document.title = DOC.title+' · Gloss';
+  if (STATIC && !staticSeen()) art.prepend(staticIntro());
+  $('#docTitle').textContent = DOC.title; document.title = DOC.title+(STATIC?'':' · Gloss');
   const pk = pack(); buildEntityIndex();
   if (pk){
     const L=P.layers, seenTerm=new Set();
-    const refAnchors=new Map(); if (L.refs) for (const r of pk.references||[]) for (const a of r.anchors||[]){ if(!refAnchors.has(a.bid)) refAnchors.set(a.bid,[]); refAnchors.get(a.bid).push({q:a.q,id:r.id}); }
+    const refAnchors=new Map(); if (L.refs) for (const r of pk.references||[]) for (const a of r.anchors||[]){ const bid=anchorBid(a); if (!bid) continue; if(!refAnchors.has(bid)) refAnchors.set(bid,[]); refAnchors.get(bid).push({q:a.q,r}); }
     const noteAnchors=new Map(); if (L.notes) for (const n of pk.notes||[]) if (n.bid){ if(!noteAnchors.has(n.bid)) noteAnchors.set(n.bid,[]); noteAnchors.get(n.bid).push(n); }
     for (const b of BLOCKS){
       const el=b.el, text=el.textContent, mv=pk.moves&&pk.moves[b.bid];
@@ -562,7 +649,7 @@ function renderDoc(keepScroll){
       if (mv && L.sigs) for (const [i,sg] of (mv.signals||[]).entries()){ const r=findQuote(text,sg.q); if (r) wrapRange(el,r[0],r[1],()=>h('span',{class:'m-sig','data-t':'sig','data-id':b.bid,'data-i':i})); }
       // entities, non-overlapping
       const spans=[];
-      let from=0; for (const a of refAnchors.get(b.bid)||[]){ const r=findQuote(text,a.q,0); if (r) spans.push({s:r[0],e:r[1],kind:'ref',id:a.id}); }
+      for (const a of refAnchors.get(b.bid)||[]){ const r=refSpan(text,a.q,a.r); if (r && !spans.some(t=>r[0]<t.e && t.s<r[1])) spans.push({s:r[0],e:r[1],kind:'ref',id:a.r.id}); }
       if (!b.isH && !b.bib){
         const ents = entitySpans(text,{people:L.people, terms:L.terms});
         ents.sort((a,b2)=>a.s-b2.s);
@@ -585,7 +672,7 @@ function renderDoc(keepScroll){
 }
 let endNavSeq=0;
 async function appendEndNav(){
-  const seq=++endNavSeq, cur=DOC; if (!cur || cur.convert) return;
+  const seq=++endNavSeq, cur=DOC; if (!cur || cur.convert || STATIC) return;
   let order;
   if (cur.group){ order=(await DB.all()).filter(d=>!d.deleted && d.group && d.group.id===cur.group.id).sort((x,y)=>(x.group.order??0)-(y.group.order??0) || x.created-y.created); }
   else { order=[]; for (const r of await libraryRecords()) order.push(...(r.doc?[r.doc]:r.docs)); order.reverse(); }   // oldest first, so "next" is the newer one
@@ -709,7 +796,8 @@ function moveCard(bid, sigIndex){
       }
       w.append(sec('Pressure points', mv.critique?prose(mv.critique):null));
     }
-    w.append(h('div',{class:'row',style:'margin-top:8px'}, h('button',{class:'btn',onclick:()=>openCard(askCard({bid, q:null}))},'Ask about this paragraph'), h('button',{class:'btn',onclick:()=>{ closeSheet(); TTS.start(bid); }},'Read aloud from here'), b?gotoLink(bid):null));
+    w.append(h('div',{class:'row',style:'margin-top:8px'}, STATIC?null:h('button',{class:'btn',onclick:()=>openCard(askCard({bid, q:null}))},'Ask about this paragraph'), h('button',{class:'btn',onclick:()=>{ closeSheet(); TTS.start(bid); }},'Read aloud from here'),
+      STATIC&&b?h('button',{class:'btn',onclick:()=>copyLink(bid)},'Copy a link to it'):null, b?gotoLink(bid):null));
     return w; } };
 }
 function termCard(t){
@@ -723,7 +811,7 @@ function termCard(t){
     if (rel.length) w.append(sec('Related', h('div',{class:'links'}, rel.map(r=>h('a',{href:'#','data-t':'term','data-id':r.id},r.term)))));
     w.append(sec('Where it appears', occList(occurrences(termRegex([t.term,...(t.aliases||[])],true)))));
     w.append(sec('Look it up', searchLinks(t.term+(fieldGroup()==='phil' && !/philos/i.test(t.term)?' philosophy':''))));
-    if (!t.deep) w.append(deepenButton('Go deeper on this term', async ()=>{ t.deep = await askOnce(`Give a deeper treatment of the term “${t.term}” as used in ${fieldOf()||'its field'}: its history (who introduced it and when), how its meaning shifted, the main debates it features in, common confusions, and two or three key readings for a newcomer. Use short ### sections.`, `Term in this text: ${t.inThisPaper||''}`); await saveDoc(); }));
+    if (!t.deep && !STATIC) w.append(deepenButton('Go deeper on this term', async ()=>{ t.deep = await askOnce(`Give a deeper treatment of the term “${t.term}” as used in ${fieldOf()||'its field'}: its history (who introduced it and when), how its meaning shifted, the main debates it features in, common confusions, and two or three key readings for a newcomer. Use short ### sections.`, `Term in this text: ${t.inThisPaper||''}`); await saveDoc(); }));
     return w; } };
 }
 function personCard(p){
@@ -734,7 +822,7 @@ function personCard(p){
     const wk=h('div'); w.append(wk); wikiInto(wk, p.name, p.role);
     w.append(sec('In this text', prose(p.inThisPaper)));
     if (p.profile) w.append(sec('Getting to know them', prose(p.profile)));
-    else w.append(deepenButton('Get to know them', async ()=>{ p.profile = await askOnce(`Write an engaging, accurate profile of ${p.name} (${p.role||''}) for a newcomer to ${fieldOf()||'their field'}. Use ### sections: Who they are; What they work on and why it matters; How their views developed over time (with approximate dates and key works); Allies, rivals and famous exchanges; Signature ideas, arguments or thought experiments; Why they are interesting to read. Keep claims to things you are confident of, flag uncertainty, and do not invent quotations.`, `How they figure in the text being read: ${p.inThisPaper||''}`); await saveDoc(); }));
+    else if (!STATIC) w.append(deepenButton('Get to know them', async ()=>{ p.profile = await askOnce(`Write an engaging, accurate profile of ${p.name} (${p.role||''}) for a newcomer to ${fieldOf()||'their field'}. Use ### sections: Who they are; What they work on and why it matters; How their views developed over time (with approximate dates and key works); Allies, rivals and famous exchanges; Signature ideas, arguments or thought experiments; Why they are interesting to read. Keep claims to things you are confident of, flag uncertainty, and do not invent quotations.`, `How they figure in the text being read: ${p.inThisPaper||''}`); await saveDoc(); }));
     const theirs=(pk.references||[]).filter(r=>(r.authors||r.key||'').toLowerCase().includes(p.name.split(/\s+/).pop().toLowerCase()));
     if (theirs.length) w.append(sec('Their works cited here', h('ul',{class:'list'}, theirs.map(r=>h('li',{'data-t':'ref','data-id':r.id}, h('div',{class:'t1'},r.key), h('div',{class:'t2'},r.title||r.full))))));
     w.append(sec('Where they appear', occList(occurrences(termRegex([p.name,...(p.aliases||[])],false)))));
@@ -756,7 +844,7 @@ function refCard(r){
     w.append(h('h2',{},r.key), h('p',{class:'kind'}, r.kind?`Cited as ${r.kind}`:'Source'));
     w.append(h('div',{class:'prose small',style:'margin:0 0 12px',html:DOMPurify.sanitize(marked.parseInline(r.full||''))}));
     w.append(sec('Why it is cited here', prose(r.use)));
-    const uses=(r.anchors||[]).map(a=>BY.get(a.bid)).filter(Boolean);
+    const uses=(r.anchors||[]).map(a=>BY.get(anchorBid(a))).filter(Boolean);
     if (uses.length) w.append(sec('Cited at', occList([...new Set(uses)])));
     const live=h('section',{},h('h3',{},'About the work'), h('p',{class:'muted small'},h('span',{class:'spin'}),' Looking it up…')); w.append(live); liveRef(r, live);
     const q = r.title ? `${r.title} ${r.authors||''}` : r.full;
@@ -782,7 +870,7 @@ async function liveRef(r, el){
     done(h('p',{class:'small'}, h('b',{},L.title||''), ` (${L.year||'?'})`, L.venue?`, ${L.venue}`:'', L.cited!=null?`; cited by ${L.cited}`:''),
       L.abstract?h('div',{class:'prose'},h('p',{},L.abstract)):h('p',{class:'muted small'},'No abstract available from OpenAlex.'),
       h('p',{class:'muted small'},'Matched automatically in OpenAlex; check the title is the right work.'), L.oa?h('div',{class:'links'},h('a',{href:L.oa,target:'_blank',rel:'noopener'},'Open-access copy')):null);
-  }catch(e){ done(h('p',{class:'muted small'},'Could not reach OpenAlex (offline, or its free daily limit is used up; add a free key in settings).')); }
+  }catch(e){ done(h('p',{class:'muted small'},STATIC?'Could not reach OpenAlex (offline, or its free daily limit is used up). Try the links below.':'Could not reach OpenAlex (offline, or its free daily limit is used up; add a free key in settings).')); }
 }
 function argCard(a){
   return { title:a.name, bid:a.bid, render(){
@@ -811,7 +899,7 @@ function guideCard(tab='outline'){
   return { title:'Guide', render(){
     const pk=pack(); const w=h('div',{class:'card'});
     if (!hasGuide()){ w.append(h('h2',{},'No guide yet'), h('p',{class:'muted'},'Build a guide to get paragraph notes, a glossary, people and sources for this text.'), h('button',{class:'btn primary',onclick:()=>{closeSheet();generateGuide();}},'Build the guide')); return w; }
-    const tabs=[['outline','Outline'],['args','Arguments'],['terms','Glossary'],['people','People'],['refs','Sources'],['notes','Your questions']];
+    const tabs=[['outline','Outline'],['args','Arguments'],['terms','Glossary'],['people','People'],['refs','Sources'],['notes',STATIC?'Questions':'Your questions']].filter(([k])=>!(STATIC&&k==='notes'&&!(pk.notes||[]).length));
     const bar=h('div',{class:'tabs'}, tabs.map(([k,l])=>h('button',{class:'chip','aria-pressed':String(k===tab),onclick:()=>{ STACK[STACK.length-1]=guideCard(k); drawCard(); }},l)));
     w.append(bar);
     const filter=h('input',{type:'search',placeholder:'Filter',style:'width:100%;padding:8px 10px;border:1px solid var(--rule);border-radius:9px;background:var(--bg);margin:0 0 8px'});
@@ -879,6 +967,7 @@ function askCard({bid, q, note}){
     const ta=h('textarea',{placeholder: thread.length?'Ask a follow-up…':'Or ask your own question…'});
     const send=h('button',{class:'btn primary',onclick:()=>{ if (ta.value.trim()) { const v=ta.value.trim(); ta.value=''; run(v, v); } }},'Ask');
     ta.addEventListener('keydown',e=>{ if (e.key==='Enter' && (e.metaKey||e.ctrlKey)) send.click(); });
+    if (STATIC){ if (BY.get(bid)) w.append(gotoLink(bid)); return w; }
     w.append(h('h3',{},thread.length?'Ask more':'Explain it'), chips, h('div',{class:'ask-box'},ta,send));
     w.append(h('div',{class:'row',style:'margin-top:12px'}, h('button',{class:'btn',onclick:()=>cardFromSelection(bid, q, thread)},'Make a flashcard')));
     if (note) w.append(h('div',{class:'row',style:'margin-top:14px'}, BY.get(bid)?gotoLink(bid):null, h('button',{class:'btn',onclick:async()=>{ pk.notes=pk.notes.filter(n=>n!==note); await saveDoc(); closeSheet(); renderDoc(true); }},'Delete this note')));
@@ -908,7 +997,7 @@ function selInfo(){
 }
 let selT;
 document.addEventListener('selectionchange',()=>{ clearTimeout(selT); selT=setTimeout(()=>{
-  const fab=$('#askFab'); const si=selInfo(); if (!si || !DOC){ fab.style.display='none'; return; }
+  const fab=$('#askFab'); const si=selInfo(); if (!si || !DOC || STATIC){ fab.style.display='none'; return; }
   fab.style.display='block'; const y=Math.min(innerHeight-60, si.rect.bottom+14); fab.style.top=y+'px';
   fab.style.left=Math.max(10,Math.min(innerWidth-fab.offsetWidth-10, si.rect.left+si.rect.width/2-fab.offsetWidth/2))+'px';
   fab.onclick=()=>{ fab.style.display='none'; window.getSelection().removeAllRanges(); openCard(askCard({bid:si.bid,q:si.q}), true); };
@@ -929,7 +1018,7 @@ function openAa(){
   const fp=h('div',{class:'fontpick'}, fonts.map(([k,n,d])=>h('button',{'aria-pressed':String(P.font===k),style:`font-family:${fam[k]}`,onclick:e=>{ P.font=k; savePrefs(); applyPrefs(); $$('button',fp).forEach(b=>b.setAttribute('aria-pressed','false')); e.currentTarget.setAttribute('aria-pressed','true'); }}, n, h('small',{},d))));
   const themes=[['auto','Auto'],['paper','Paper'],['vellum','Vellum'],['night','Night']];
   const tp=h('div',{class:'row'}, themes.map(([k,n])=>h('button',{class:'chip','aria-pressed':String(P.theme===k),onclick:e=>{ P.theme=k; savePrefs(); applyPrefs(); $$('.chip',tp).forEach(b=>b.setAttribute('aria-pressed','false')); e.currentTarget.setAttribute('aria-pressed','true'); }},n)));
-  const layers=[['moves','Paragraph notes','--c-move'],['sigs','Key wording','--c-move'],['terms','Terms','--c-term'],['people','People','--c-person'],['refs','Citations','--c-ref'],['notes','Your questions','--c-note']];
+  const layers=[['moves','Paragraph notes','--c-move'],['sigs','Key wording','--c-move'],['terms','Terms','--c-term'],['people','People','--c-person'],['refs','Citations','--c-ref'],['notes','Your questions','--c-note']].filter(([k])=>!(STATIC&&k==='notes'&&!(pack().notes||[]).length));
   const lp=h('div',{class:'row'}, layers.map(([k,n,c])=>h('button',{class:'chip','aria-pressed':String(!!P.layers[k]),onclick:e=>{ P.layers[k]=!P.layers[k]; savePrefs(); e.currentTarget.setAttribute('aria-pressed',String(P.layers[k])); renderDoc(true); }}, h('span',{class:'swatch',style:`background:var(${c})`}), n)));
   const dens=h('select',{onchange:e=>{ P.density=e.target.value; savePrefs(); renderDoc(true); }}, [['para','Once per paragraph'],['doc','First time only'],['all','Every time']].map(([v,l])=>h('option',{value:v,selected:P.density===v},l)));
   showDlg([h('h2',{},h('span',{},'Reading'),closeX()), h('h3',{},'Theme'), tp, h('h3',{},'Typeface'), fp, h('h3',{},'Layout'),
@@ -1052,6 +1141,7 @@ async function openDoc(id){ const d=await DB.get(id); if (!d) return; if (!DOC |
 $('#bLib').onclick=()=>{ LIB.page=0; if (DOC&&DOC.group) LIB.open.add(DOC.group.id); openLibrary(); };
 
 async function openMore(){
+  if (STATIC) return staticMenu();
   const pk=pack(), doc=DOC&&!DOC.convert?DOC:null;
   const act=(label,fn,primary)=>h('button',{class:'btn'+(primary?' primary':''),style:'width:100%;justify-content:flex-start;margin:0 0 8px',onclick:()=>{ closeDlg(); fn(); }},label);
   const due=await dueTotal();
@@ -1069,6 +1159,7 @@ async function openMore(){
     doc?act('Markdown', ()=>download(slug(doc.title)+'.md', currentMd(), 'text/markdown')):null,
     doc&&hasGuide()?act('Guide only (.gloss.json)', ()=>download(slug(doc.title)+'.gloss.json', JSON.stringify(pk,null,1))):null,
     doc?act('Text and guide together', ()=>download(slug(doc.title)+'.bundle.json', JSON.stringify({schema:'gloss-bundle/1', doc}))):null,
+    doc&&hasGuide()?act('Web page for readers…', exportStatic):null,
     h('h3',{},'Gloss'),
     act('Library', ()=>$('#bLib').click()),
     act('Settings', openSettings),
@@ -1084,26 +1175,88 @@ async function openInfo(){
   const when=t=>t?new Date(t).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}):'—';
   const src=d.versions[0]?.name==='PDF'?'PDF':d.versions[0]?.name==='Pasted text'?'Pasted text':'Markdown file';
   const rowI=(k,v)=>[h('dt',{},k),h('dd',{},v)];
-  const field=h('span',{}, fieldOf()||'not yet known', ' ', hasGuide()?h('a',{href:'#',onclick:async e=>{ e.preventDefault(); const f=prompt('Field of this text (used for explanations, terms and look-up links):', fieldOf()); if (f!=null&&f.trim()){ pack().meta.field=f.trim(); await saveDoc(); openInfo(); } }},'change'):null);
+  const field=h('span',{}, fieldOf()||'not yet known', ' ', hasGuide()&&!STATIC?h('a',{href:'#',onclick:async e=>{ e.preventDefault(); const f=prompt('Field of this text (used for explanations, terms and look-up links):', fieldOf()); if (f!=null&&f.trim()){ pack().meta.field=f.trim(); await saveDoc(); openInfo(); } }},'change'):null);
   showDlg([h('h2',{},h('span',{},'About this text'),closeX()),
     h('p',{style:'font:600 17px/1.35 var(--read-font);margin:0 0 4px'}, d.title), d.group?h('p',{class:'muted small',style:'margin:0 0 12px'}, `Part of “${d.group.title}”`):null,
     h('dl',{class:'info'},
       d.convert?rowI('Status', convStatus(d)):[
       ...rowI('Length', `${wordCount(md0).toLocaleString()} words, ${bodyN} paragraphs`),
       ...rowI('Reading', idx>=0?`paragraph ${idx+1} of ${BLOCKS.length} (${Math.round(100*(idx+1)/BLOCKS.length)}%)`:'not started'),
-      ...rowI('Source', src),
-      ...rowI('Versions', `${d.versions.length}, latest ${when(d.versions[d.versions.length-1].at)}`),
-      ...rowI('Added', when(d.created)),
+      ...(STATIC?[]:rowI('Source', src)),
+      ...(STATIC?[]:rowI('Versions', `${d.versions.length}, latest ${when(d.versions[d.versions.length-1].at)}`)),
+      ...(STATIC?[]:rowI('Added', when(d.created))),
       ...rowI('Guide', hasGuide()?`${Object.keys(pk.moves||{}).length} paragraph notes, ${pk.terms.length} terms, ${pk.people.length} people, ${(pk.references||[]).length} sources`:'not built'),
       ...rowI('Field', field),
-      ...rowI('Your questions', String((pk&&pk.notes||[]).length)),
-      ...rowI('Flashcards', cc?`${cc.total} (${cc.n+cc.l+cc.d} to study today)`:'none')]),
+      ...(STATIC?[]:rowI('Your questions', String((pk&&pk.notes||[]).length))),
+      ...(STATIC?[]:rowI('Flashcards', cc?`${cc.total} (${cc.n+cc.l+cc.d} to study today)`:'none'))]),
+    STATIC?h('p',{class:'muted small',style:'margin-top:14px'},'The paragraph notes, glossary, people and source summaries were written by Claude, an AI model, and can be wrong. The text itself is the authority. Made with Gloss.'):
     h('div',{class:'row',style:'margin-top:14px'}, h('button',{class:'btn',onclick:async()=>{ const t=prompt('Title', d.title); if (t&&t.trim()){ d.title=t.trim(); await saveDoc(); $('#docTitle').textContent=d.title; openInfo(); } }},'Rename'),
       !d.convert?h('button',{class:'btn',onclick:()=>{ closeDlg(); Screen.stack=[]; openDeck(d.id); }},'Flashcards'):null)]);
 }
 $('#bMore').onclick=openMore;
 $('#docTitle').onclick=()=>DOC?openInfo():openLibrary();
 $('#docTitle').onkeydown=e=>{ if (e.key==='Enter') $('#docTitle').click(); };
+
+/* ============ web page for readers (static edition) ============ */
+// Writes this app's own page with the text and guide embedded, as one .html file to upload anywhere.
+function exportStatic(){
+  const d=DOC, pk=pack(), nNotes=(pk.notes||[]).length;
+  const notes=h('input',{type:'checkbox'});
+  const intro=h('textarea',{rows:4,placeholder:'For example: “This is our paper on … . The notes in the margin explain each step of the argument.”'});
+  showDlg([h('h2',{},h('span',{},'Web page for readers'),closeX()),
+    h('p',{class:'small'},'Makes one .html file with this text and its guide, for anyone to read in their browser. Readers get the text, the paragraph notes, the glossary, people and sources, the reading settings and read-aloud. There is no Ask, flashcards, sync or API key, and nothing is sent to Claude.'),
+    h('div',{class:'field'}, h('label',{},'A note to readers (optional, Markdown)'), intro, h('div',{class:'muted small'},'Shown at the top with a short “how to read this” guide. Readers can dismiss it.')),
+    nNotes?h('label',{class:'opt'}, notes, h('span',{},`Include your ${nNotes} saved question${nNotes>1?'s':''} and answers`)):null,
+    h('p',{class:'muted small'},'Upload the file to any web host: rename it index.html to serve it from a folder. The page loads its two libraries and fonts from public CDNs.'),
+    h('button',{class:'btn primary',onclick:async e=>{ e.target.disabled=true;
+      try{ download(slug(d.title)+'.html', await staticHtml(d, {intro:intro.value.trim(), notes:notes.checked}), 'text/html'); closeDlg(); toast('Web page saved.'); }
+      catch(err){ e.target.disabled=false; toast('Could not make the page: '+err.message, 6000, true); } }},'Save the web page')]);
+}
+async function staticHtml(d, opt){
+  const res=await fetch('index.html',{cache:'no-cache'}); if (!res.ok) throw new Error(`could not read the app page (${res.status})`);
+  let src=await res.text(); if (!src.includes('<script>\n"use strict";')) throw new Error('the app page is not in the expected form');
+  const pk=JSON.parse(JSON.stringify(d.pack)); delete pk.jobs; if (!opt.notes) pk.notes=[];
+  for (const r of pk.references||[]) if (r.live && !r.live.title) delete r.live;
+  const data={schema:'gloss-static/1', exported:Date.now(), app:APP_VERSION, intro:opt.intro||'',
+    doc:{id:d.id, title:d.title, versions:[{md:currentMd(), at:d.versions[d.versions.length-1].at, name:''}], pack:pk, created:d.created, updated:d.updated, pos:0}};
+  const json=JSON.stringify(data).replace(/</g,'\\u003c');   // safe inside <script>
+  let icon='icon-192.png'; try{ const b=await (await fetch('icon-192.png')).blob(); icon=await new Promise(r=>{ const f=new FileReader(); f.onload=()=>r(f.result); f.readAsDataURL(b); }); }catch{}
+  const desc=collapse((pk.meta&&pk.meta.summary)||'').slice(0,300), title=d.title;
+  const meta=`<title>${esc(title)}</title>\n<meta name="description" content="${esc(desc)}">\n<meta property="og:type" content="article">\n<meta property="og:title" content="${esc(title)}">\n<meta property="og:description" content="${esc(desc)}">\n<meta name="twitter:card" content="summary">`;
+  src=src.replace(/<title>[^<]*<\/title>/, ()=>meta)
+    .replace(/<link rel="manifest"[^>]*>\n?/, '')
+    .replace(/href="icon-192\.png"/g, ()=>`href="${icon}"`);
+  const at=src.lastIndexOf('<script>\n"use strict";');
+  return src.slice(0,at)+`<script id="gloss-static" type="application/json">${json}<\/script>\n`+src.slice(at);
+}
+const staticSeen = () => { try{ return localStorage.getItem('gloss.static.intro.'+STATIC.doc.id)==='1'; }catch{ return false; } };
+function staticIntro(){
+  const key=c=>h('span',{class:'key',style:`background:var(${c})`});
+  const box=h('aside',{class:'intro','aria-label':'How to read this'},
+    h('h2',{},'How to read this'),
+    STATIC.intro?h('div',{class:'note prose',html:md(STATIC.intro)}):null,
+    h('ul',{},
+      h('li',{}, key('--c-move'),' A bar in the left margin means there is a note on that paragraph: what it says, how the argument works, and the wording that matters. Tap the bar.'),
+      h('li',{}, key('--c-term'),' Dotted underlines are terms of art and ',key('--c-person'),' solid ones are people. Tap one for an explanation.'),
+      h('li',{}, key('--c-ref'),' Citations in colour open the source: what it is and why it is cited here.'),
+      h('li',{}, 'The guide button at the top has an outline, the named arguments, a glossary, the people and all the sources. ',h('b',{},'Aa'),' changes the type, the theme and what is marked. The headphones read the text aloud.')),
+    h('p',{class:'muted small'},'The notes were written by Claude, an AI model, and can be wrong. The text itself is the authority.'),
+    h('div',{class:'row'}, h('button',{class:'btn primary',onclick:()=>{ try{ localStorage.setItem('gloss.static.intro.'+STATIC.doc.id,'1'); }catch{} box.remove(); }},'Got it')));
+  return box;
+}
+function staticMenu(){
+  const act=(label,fn)=>h('button',{class:'btn',style:'width:100%;justify-content:flex-start;margin:0 0 8px',onclick:()=>{ closeDlg(); fn(); }},label);
+  showDlg([h('h2',{},h('span',{},'Menu'),closeX()),
+    act('How to read this', ()=>{ try{ localStorage.removeItem('gloss.static.intro.'+STATIC.doc.id); }catch{} renderDoc(); window.scrollTo(0,0); }),
+    act('Guide', ()=>$('#bGuide').click()),
+    act('Reading settings', openAa),
+    act('Read aloud', ()=>$('#bListen').click()),
+    act('About this text', openInfo)]);
+}
+function copyLink(bid){
+  const url=location.href.split('#')[0]+'#'+bid;
+  (navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(()=>toast('Link copied.'), ()=>prompt('Link to this paragraph:', url));
+}
 
 /* ============ progress UI ============ */
 const Prog = {
@@ -1990,6 +2143,7 @@ const Sync = {
     return r;
   },
   async init(){
+    if (STATIC) return;
     try { const r=await fetch('/api/sync/ping',{headers:P.syncToken?{'x-sync-token':P.syncToken}:{}}); const js=(r.headers.get('content-type')||'').includes('json');
       this.available = js && [200,401].includes(r.status); this.needsKey = r.status===401; } catch(e){ this.available=false; }
     if (!this.available) return;
@@ -2388,6 +2542,13 @@ let posT; addEventListener('scroll',()=>{ clearTimeout(posT); posT=setTimeout(()
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyPrefs);
 (async function boot(){
   applyPrefs();
+  if (STATIC){
+    DOC=STATIC.doc; renderDoc();
+    const hb=location.hash.slice(1); let saved=null; try{ saved=localStorage.getItem('gloss.static.'+DOC.id); }catch{}
+    if (BY.has(hb)) setTimeout(()=>gotoBlock(hb),50); else if (saved && BY.has(saved)){ DOC.posBid=saved; restorePos(DOC); }
+    addEventListener('hashchange',()=>{ const b=location.hash.slice(1); if (BY.has(b)) gotoBlock(b); });
+    return;
+  }
   const last=localStorage.getItem('gloss.last');
   if (last && await DB.get(last)) await openDoc(last); else renderDoc();
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});

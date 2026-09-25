@@ -50,6 +50,7 @@ Plain DOM. The helper `h(tag, attrs, ...kids)` builds elements, `$` and `$$` are
 - **Claude API (`claudeStream`).** Streaming fetch straight to api.anthropic.com, using the `anthropic-dangerous-direct-browser-access` header. It parses SSE and records the last response in `LAST_DEBUG` (shown in Settings). `claudeJSON` and `GUIDE_SCHEMA` are dead code left from an earlier design and can be removed.
 - **Markdown to blocks (`renderMd`).** Pre-processes `[^n]` footnotes (marked has no footnote support), renders, then marks each block element with `data-bid`. The **block id is `'b' + fnv(lowercased text)`**, with a suffix for duplicates. Stable ids are the backbone of the app: annotations, notes, reading position, flashcard sources and version diffs all key off `bid`. Blocks after a References/Bibliography heading are flagged `bib`.
 - **Rendering overlays (`renderDoc`).** Wraps inline marks (terms, people, citations, key-wording signals, your questions) using `findQuote` (quote matching that normalises whitespace and quote marks) and `wrapRange` (splits text nodes). It adds a margin "rail" button per paragraph with a note, then calls `appendEndNav()` for previous/next.
+- **Citation marks (`refSpan`, `anchorBid`).** A reference anchor's quote from the guide job is often a whole clause ("Antony (2006) examines what follows…") or a group citation shared by several works. `refSpan` narrows the mark to this work's own citation: it finds the work's year in the quote, then splits any enclosing parenthesis at `;` and `, <year>` and keeps the piece(s) holding it, or walks back over an author phrase for narrative citations ("Han, Chalmers and Izmailov (2026, preprint)"). With no year it marks the author's name; with neither, nothing. `anchorBid` recovers anchors whose paragraph number was one off (usually pointing at the heading above). One-word capitalised aliases of longer terms ("Data" for Commander Data) match case-sensitively in `buildEntityIndex`.
 - **Cards and sheet.** A bottom sheet on mobile, a side panel at 1100px and wider. It keeps a card stack (`openCard`, `drawCard`) for term, person, reference, paragraph, argument, ask and guide cards. Entity names inside card prose are auto-linked (`linkEntitiesIn`).
 - **Ask (`askCard`, `LENSES`, `tutorSystem`, `contextFor`).** Conversations are saved as `pack.notes`, anchored by `bid` and a quote.
 - **Guide generation (the job queue).** Details below.
@@ -59,6 +60,7 @@ Plain DOM. The helper `h(tag, attrs, ...kids)` builds elements, `$` and `$$` are
 - **Sync (`Sync`).** Details below.
 - **Flashcards (`SRS`, `Cards`, `Screen`, `openDecks`, `openDeck`, `startStudy`, `editCard`, `cardsWithClaude`, `cardFromSelection`).** Details below.
 - **Library (`libraryRecords`, `inferGroups`, `openLibrary`).** 5 records per page, most recent first. Multi-section PDF imports are one expandable group record.
+- **Web page for readers (`exportStatic`, `staticHtml`, `STATIC`).** Details below.
 - **Menu (`openMore`)** holds every action. Tapping the title opens `openInfo()` ("About this text": stats, field, rename).
 
 ### Data model
@@ -143,6 +145,12 @@ Models: `P.mainModel` = `claude-sonnet-5`, `P.fastModel` = `claude-haiku-4-5-202
 - **Sessions (`startStudy`)** can combine any selection of decks. Order: learning cards when due, then reviews with new cards mixed in, then learn-ahead within 20 minutes. There's a per-deck daily cap on new cards (`P.newPerDay`, default 20), plus Undo and keyboard shortcuts.
 - **Card sources:** the guide (`Cards.fromGuide`, free); Claude per section (`cardsWithClaude`, using the same cached prefix, so it's cheap if a guide was built in the last hour); a passage selection from the Ask panel (`cardFromSelection`); or written by hand. Export for Anki: `Cards.anki()` produces tab-separated text with Anki's header directives.
 
+### Web page for readers (static edition)
+
+⋮ → Export this text → Web page for readers… writes one self-contained `.html` file for sharing (for example from a Substack post). `staticHtml` fetches the app's own `index.html`, removes the manifest link, inlines the icon, adds `<title>`, description and Open Graph tags, and inserts `<script id="gloss-static" type="application/json">` holding `{schema:'gloss-static/1', intro, doc}` (latest version only, no `jobs`, saved questions only if ticked; `<` escaped as `\u003c`).
+
+When that block is present, `STATIC` is set and the same code runs read-only: `DB` and `Decks` are in-memory stubs (the reading place goes to `localStorage['gloss.static.<id>']`, and no IndexedDB is opened), `claudeStream` throws, `Sync.init` returns, and no service worker is registered. The library button, Ask, deepen buttons, flashcards, settings and end-of-text navigation are hidden. The ⋮ menu becomes `staticMenu`. A dismissible "How to read this" box (`staticIntro`) carries the owner's note and an AI-authorship notice. Paragraph cards offer "Copy a link to it" (`#<bid>` deep links). Reference cards still look up OpenAlex, and person cards still look up Wikipedia; neither needs a key. When changing a feature that needs a key or the server, keep it out of static mode.
+
 ## Testing
 
 No test runner is committed. The pattern that has worked:
@@ -153,7 +161,7 @@ No test runner is committed. The pattern that has worked:
 4. **Mock `speechSynthesis`** for read-aloud tests (headless Chromium has no voices).
 5. **Syntax check:** extract the `<script>` and run `node --check`.
 
-Things verified this way: guide queue resume, cache prefix identity across jobs, version diffs, PDF chapter import against `pdftotext` word counts, two-device sync including conflicts and deletions, the SRS intervals, library grouping and pagination, and end-of-text navigation.
+Things verified this way: citation narrowing against a real bundle, the static export (no API or sync requests, no IndexedDB, position and deep links), guide queue resume, cache prefix identity across jobs, version diffs, PDF chapter import against `pdftotext` word counts, two-device sync including conflicts and deletions, the SRS intervals, library grouping and pagination, and end-of-text navigation.
 
 ## Known limitations and ideas
 
