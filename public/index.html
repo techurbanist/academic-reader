@@ -267,6 +267,7 @@ body.tts-on #reader{padding-bottom:50vh}
   <button class="ib" id="bLib" title="Library" aria-label="Library"><svg viewBox="0 0 24 24"><path d="M4 5h4v14H4zM10 5h4v14h-4zM16.5 5.5l3.5 1-3.5 13-3.5-1z"/></svg></button>
   <h1 id="docTitle" role="button" tabindex="0" title="About this text">Academic Reader</h1>
   <button class="ib" id="bListen" title="Read aloud" aria-label="Read aloud"><svg viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3.5" y="13.5" width="4" height="6.5" rx="1.5"/><rect x="16.5" y="13.5" width="4" height="6.5" rx="1.5"/></svg></button>
+  <button class="ib" id="bHelp" title="Welcome and help" aria-label="Welcome and help"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.6" r=".6"/></svg></button>
   <button class="ib" id="bGuide" title="Guide: outline, arguments, glossary, people, sources" aria-label="Guide"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM9 4v16M12 8h4M12 12h4"/></svg></button>
   <button class="ib aa" id="bAa" title="Reading settings" aria-label="Reading settings">Aa</button>
   <button class="ib" id="bMore" title="Document actions" aria-label="Document actions"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg></button>
@@ -363,7 +364,7 @@ function wrapRange(root, start, end, make){
 // (a local copy) count as empty: Dropbox and Google Drive sync are then offered as "not set up here".
 const CONFIG = (()=>{ const v=x=>/^__.*__$/.test(x)?'':x;
   return { publicUrl: v('__PUBLIC_URL__') || 'https://academic-reader.initialloop.com', dropboxAppKey: v('__DROPBOX_APP_KEY__'), googleClientId: v('__GOOGLE_CLIENT_ID__') }; })();
-const APP_VERSION = '2026-09-25.15';
+const APP_VERSION = '2026-09-25.16';
 const APP_BUILD = '__BUILD_TIME__';   // replaced with the UTC deploy time by the Netlify build
 const buildLabel = b => /^__/.test(b) ? 'local copy' : `${b.replace('T',' ').replace(/Z$/,'')} UTC`;
 const Log = {
@@ -1185,7 +1186,7 @@ function welcome(inDialog){
       h('li',{},'Source code: ', ext(REPO_URL,'github.com/techurbanist/academic-reader'),' (MIT licence).')),
     h('p',{}, link('Data and security details', openPrivacy),' · ', h('a',{href:POLICY_URL,target:'_blank',rel:'noopener'},'Privacy policy')));
 }
-function openWelcome(){ showDlg([h('h2',{},h('span',{},'Academic Reader'),closeX()), welcome(true)]); }
+function openWelcome(){ showDlg([h('h2',{},h('span',{},'Welcome and help'),closeX()), welcome(true)]); }
 
 async function checkClaudeKey(k){
   try{ const r=await fetch('https://api.anthropic.com/v1/models?limit=1',{headers:{'x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}});
@@ -1388,7 +1389,12 @@ async function openMore(){
   const due=await dueTotal();
   const q=doc?queueState(pk):{left:0};
   showDlg([h('h2',{},h('span',{},'Menu'),closeX()),
+    h('h3',{},'Academic Reader'),
     act(due?`Study flashcards (${due} due)`:'Flashcards', openDecks, !!due),
+    act('Library', ()=>$('#bLib').click()),
+    act('Settings', openSettings),
+    act('Welcome and help', openWelcome),
+    act('Data and security', openPrivacy),
     doc?h('h3',{},'This text'):null,
     doc&&q.left&&!RUNNING?act(`Resume the guide (${q.left} of ${q.total} parts left${q.failed?`, ${q.failed} failed`:''})`, resumeGuide, true):null,
     doc?act(hasGuide()?'Rebuild the guide from scratch':'Build the guide', generateGuide, !hasGuide()&&!due):null,
@@ -1401,11 +1407,6 @@ async function openMore(){
     doc&&hasGuide()?act('Guide only (.gloss.json)', ()=>download(slug(doc.title)+'.gloss.json', JSON.stringify(pk,null,1))):null,
     doc?act('Text and guide together', ()=>download(slug(doc.title)+'.bundle.json', JSON.stringify({schema:'gloss-bundle/1', doc}))):null,
     doc&&hasGuide()?act('Web page for readers…', exportStatic):null,
-    h('h3',{},'Academic Reader'),
-    act('Library', ()=>$('#bLib').click()),
-    act('Settings', openSettings),
-    act('Welcome and help', openWelcome),
-    act('Data and security', openPrivacy),
     Sync.statusLine(), h('div',{id:'verSlot'}),
   ]); fillVersion();
 }
@@ -1435,6 +1436,8 @@ async function openInfo(){
       !d.convert?h('button',{class:'btn',onclick:()=>{ closeDlg(); Screen.stack=[]; openDeck(d.id); }},'Flashcards'):null)]);
 }
 $('#bMore').onclick=openMore;
+// On a shared page there is no welcome page: the help button brings back its "How to read this" box.
+$('#bHelp').onclick=()=>{ if (!STATIC) return openWelcome(); try{ localStorage.removeItem('gloss.static.intro.'+STATIC.doc.id); }catch{} renderDoc(); window.scrollTo(0,0); };
 $('#docTitle').onclick=()=>DOC?openInfo():openLibrary();
 $('#docTitle').onkeydown=e=>{ if (e.key==='Enter') $('#docTitle').click(); };
 
