@@ -360,7 +360,7 @@ function wrapRange(root, start, end, make){
 // Per-site settings, stamped by build.sh from Netlify environment variables (see README). Unstamped values
 // (a local copy) count as empty: Dropbox and Google Drive sync are then offered as "not set up here".
 const CONFIG = (()=>{ const v=x=>/^__.*__$/.test(x)?'':x;
-  return { publicUrl: v('__PUBLIC_URL__') || 'https://academic-reader.netlify.app', dropboxAppKey: v('__DROPBOX_APP_KEY__'), googleClientId: v('__GOOGLE_CLIENT_ID__') }; })();
+  return { publicUrl: v('__PUBLIC_URL__') || 'https://academic-reader.initialloop.com', dropboxAppKey: v('__DROPBOX_APP_KEY__'), googleClientId: v('__GOOGLE_CLIENT_ID__') }; })();
 const APP_VERSION = '2026-09-25.12';
 const APP_BUILD = '__BUILD_TIME__';   // replaced with the UTC deploy time by the Netlify build
 const buildLabel = b => /^__/.test(b) ? 'local copy' : `${b.replace('T',' ').replace(/Z$/,'')} UTC`;

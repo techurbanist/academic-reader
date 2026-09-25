@@ -1,6 +1,6 @@
 # Academic Reader
 
-Read academic papers with a tutor in the margin. **Try it at [academic-reader.netlify.app](https://academic-reader.netlify.app).**
+Read academic papers with a tutor in the margin. **Try it at [academic-reader.initialloop.com](https://academic-reader.initialloop.com).**
 
 Academic Reader explains a paper while you read it: what each paragraph is doing in the argument, the terms of art, the people, and the works it cites. Select any passage to ask about it. It runs in your browser, on your phone or your computer, and you can install it like an app.
 
@@ -30,7 +30,7 @@ To get a key:
 
 ## Privacy and security
 
-The full [privacy policy](https://academic-reader.netlify.app/privacy) is published by Initial Loop (support@initialloop.com).
+The full [privacy policy](https://academic-reader.initialloop.com/privacy) is published by Initial Loop (support@initialloop.com).
 
 There is no account and no server holding your data.
 
@@ -76,7 +76,7 @@ Environment variables (Netlify → Project configuration → Environment variabl
 ### Setting up Dropbox sync
 
 1. At [dropbox.com/developers/apps](https://www.dropbox.com/developers/apps), choose **Create app → Scoped access → App folder**, and name it *Academic Reader*.
-2. **Settings → OAuth 2 → Redirect URIs:** add your site's address with a trailing slash, for example `https://academic-reader.netlify.app/`. Leave **Allow public clients (Implicit Grant & PKCE)** on.
+2. **Settings → OAuth 2 → Redirect URIs:** add your site's address with a trailing slash, for example `https://academic-reader.initialloop.com/`. Leave **Allow public clients (Implicit Grant & PKCE)** on.
 3. **Permissions:** tick `files.content.read` and `files.content.write`, then **Submit**.
 4. Copy the **App key** into `DROPBOX_APP_KEY` and redeploy. There is no secret to copy: the app uses PKCE.
 
@@ -86,7 +86,7 @@ A new Dropbox app allows 500 users. Before it passes 50, apply for production st
 
 1. In the [Google Cloud console](https://console.cloud.google.com/), create a project and enable the **Google Drive API**.
 2. **Google Auth Platform → Branding:** fill in the app name and contact details. **Audience:** External. **Data access:** add the scope `https://www.googleapis.com/auth/drive.file`, which is non-sensitive, so it needs no verification review.
-3. **Clients → Create client → Web application.** Under **Authorised redirect URIs** add your site's address with a trailing slash, for example `https://academic-reader.netlify.app/`. Under **Authorised JavaScript origins** add the address without the slash.
+3. **Clients → Create client → Web application.** Under **Authorised redirect URIs** add your site's address with a trailing slash, for example `https://academic-reader.initialloop.com/`. Under **Authorised JavaScript origins** add the address without the slash.
 4. Copy the **Client ID** into `GOOGLE_CLIENT_ID` and redeploy.
 5. While the app's publishing status is **Testing**, only the test users you list can connect (up to 100). Publish it to open it to everyone.
 

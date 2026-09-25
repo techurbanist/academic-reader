@@ -17,7 +17,7 @@ Core features:
 - **Sync.** Across devices, through the reader's own Dropbox or Google Drive, or a server of their own.
 - **Web page for readers.** Exports a paper and its guide as one read-only HTML page.
 
-Live at `https://academic-reader.netlify.app` (Netlify project `academic-reader`, site id `cb861cc9-8fd6-4316-be31-be754e886450`), built from `main` on GitHub. It has no `SYNC_TOKEN`, so its sync function refuses everything; Brendan syncs through Dropbox like any other user. (His earlier private site, `gloss-reader-ai07`, has been retired.) The app is published under the **Initial Loop** brand; contact `support@initialloop.com`. The privacy policy is `public/privacy.html`, served at `/privacy` and linked from the Dropbox and Google app registrations: keep it accurate when data handling changes.
+Live at `https://academic-reader.initialloop.com` (also `academic-reader.netlify.app`; Netlify project `academic-reader`, site id `cb861cc9-8fd6-4316-be31-be754e886450`), built from `main` on GitHub. It has no `SYNC_TOKEN`, so its sync function refuses everything; Brendan syncs through Dropbox like any other user. (His earlier private site, `gloss-reader-ai07`, has been retired.) The app is published under the **Initial Loop** brand; contact `support@initialloop.com`. The privacy policy is `public/privacy.html`, served at `/privacy` and linked from the Dropbox and Google app registrations: keep it accurate when data handling changes.
 
 Repo (public): `git@github.com:techurbanist/academic-reader.git`.
 
