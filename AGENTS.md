@@ -4,7 +4,7 @@ Orientation for an agent picking up this project without its history. Read this 
 
 ## What this is
 
-**Academic Reader** (formerly Gloss) is a reading app for academic papers, built as a PWA and used on phones and desktops. It was built for its owner, Brendan, a senior software engineer who reads philosophy of mind and science papers outside his field, and is now public: anyone can use it with their own Claude key, and nothing is stored on a server. Internal identifiers still say `gloss` (localStorage keys `gloss.*`, the IndexedDB database `gloss`, the Blobs store `gloss`, the schemas `gloss-pack/1`, `gloss-bundle/1`, `gloss-backup/1`). Keep them: renaming would strand existing libraries and files.
+**Academic Reader** (formerly Gloss) is a reading app for academic papers, built as a PWA and used on phones and desktops. It was built for its owner, Brendan, a senior software engineer who reads philosophy of mind and science papers outside his field, and is now public: anyone can use it with their own Claude key, and nothing is stored on a server. Internal identifiers still say `gloss` (localStorage keys `gloss.*`, the IndexedDB database `gloss`, the schemas `gloss-pack/1`, `gloss-bundle/1`, `gloss-backup/1`). Keep them: renaming would strand existing libraries and files.
 
 Core features:
 
@@ -14,10 +14,10 @@ Core features:
 - **Read-aloud.** Uses the browser's speech engine.
 - **Flashcards.** Anki-style spaced repetition.
 - **PDF import.** Imports from the page layout, and can split a book into chapters.
-- **Sync.** Across devices, through the reader's own Dropbox or Google Drive, or a server of their own.
+- **Sync.** Across devices, through the reader's own Dropbox or Google Drive.
 - **Web page for readers.** Exports a paper and its guide as one read-only HTML page.
 
-Live at `https://academic-reader.initialloop.com`, served by the Cloudflare Worker `academic-reader` (static assets only, config in `wrangler.jsonc`; also at `academic-reader.initialloop.workers.dev`). `.github/workflows/deploy.yml` runs `build.sh` and `wrangler deploy` on every push to `main`, using secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` and variables `DROPBOX_APP_KEY` and `GOOGLE_CLIENT_ID` from the GitHub environment `production`. The `initialloop.com` zone is on Cloudflare; the domain is attached to the Worker as a Workers custom domain. There is no sync server on the public site; Brendan syncs through Dropbox like any other user. The app moved from Netlify (project `academic-reader`); `netlify.toml` and `netlify/functions/sync.mts` stay for people who deploy their own copy there. Keep the address `academic-reader.initialloop.com`: readers' libraries, keys and sync tokens live in browser storage tied to it. The app is published under the **Initial Loop** brand; contact `support@initialloop.com`. The privacy policy is `public/privacy.html`, served at `/privacy` and linked from the Dropbox and Google app registrations: keep it accurate when data handling changes.
+Live at `https://academic-reader.initialloop.com`, served by the Cloudflare Worker `academic-reader` (static assets only, config in `wrangler.jsonc`; also at `academic-reader.initialloop.workers.dev`). `.github/workflows/deploy.yml` runs `build.sh` and `wrangler deploy` on every push to `main`, using secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` and variables `DROPBOX_APP_KEY` and `GOOGLE_CLIENT_ID` from the GitHub environment `production`. The `initialloop.com` zone is on Cloudflare; the domain is attached to the Worker as a Workers custom domain. The app moved from Netlify (project `academic-reader`); `netlify.toml` stays for people who deploy their own copy there. Sync through the site's own server (a Netlify function) was removed; devices that used it fall back to no sync. Keep the address `academic-reader.initialloop.com`: readers' libraries, keys and sync tokens live in browser storage tied to it. The app is published under the **Initial Loop** brand; contact `support@initialloop.com`. The privacy policy is `public/privacy.html`, served at `/privacy` and linked from the Dropbox and Google app registrations: keep it accurate when data handling changes.
 
 Repo (public): `git@github.com:techurbanist/academic-reader.git`.
 
@@ -27,7 +27,7 @@ Repo (public): `git@github.com:techurbanist/academic-reader.git`.
 - **Never put secrets in the repo, logs or chat.** The repo is public. Each user's Anthropic key lives only in their browser, encrypted. Dropbox app keys and Google client IDs are public identifiers, not secrets.
 - **User-facing copy about data and cost is plain technical writing:** state what happens, with no reassurance or salesmanship. The owner found persuasive wording read as untrustworthy.
 - **Nothing about a user goes to our servers.** The app talks directly from the browser to Anthropic, OpenAlex, Wikipedia, arXiv, Dropbox and Google. Keep it that way: no analytics, no proxy. A new outside service also needs adding to the CSP in `scripts/headers.mjs`.
-- **Test before shipping.** Every change so far has been verified in headless Chromium (Playwright) against a mocked Anthropic API, and against a local server running the real sync function (see Testing). Several real bugs were caught this way. Keep doing it.
+- **Test before shipping.** Every change so far has been verified in headless Chromium (Playwright) against a mocked Anthropic API, and against mocked Dropbox and Drive APIs (see Testing). Several real bugs were caught this way. Keep doing it.
 - **Be honest about limits.** When something is untested against the real API or real voices, say so. The owner prefers direct pushback to agreement.
 - **Deploying.** GitHub is the source of truth: push to `main` and the Actions workflow deploys. Don't deploy from a working copy except to test on `workers.dev`, and if you do, build in a copy (build.sh edits `public/index.html` in place).
 - **Bump the service-worker cache name** (`gloss-shell-vN` in `public/sw.js`) on every deploy that changes `index.html`, and bump `APP_VERSION` in `index.html`.
@@ -37,10 +37,9 @@ Repo (public): `git@github.com:techurbanist/academic-reader.git`.
 
 ```
 public/index.html        the whole client, about 3,000 lines: HTML, CSS, one script, no build step, no framework
-public/sw.js             service worker: page network-first, CDN libs and fonts stale-while-revalidate, /api/* never cached
+public/sw.js             service worker: page network-first, CDN libs and fonts stale-while-revalidate
 public/samples/attention.json   the sample's recipe and guide (see Sample paper)
 public/manifest.webmanifest, icon-192.png, icon-512.png
-netlify/functions/sync.mts   optional sync API on Netlify Blobs, for a copy someone runs themselves
 scripts/headers.mjs      writes public/_headers: the app pages' CSP with the sha256 of the inline script, plus nosniff and
                          referrer policy for everything
 build.sh                 stamps __BUILD_TIME__, __PUBLIC_URL__, __DROPBOX_APP_KEY__, __GOOGLE_CLIENT_ID__ from env,
@@ -72,7 +71,7 @@ Plain DOM. The helper `h(tag, attrs, ...kids)` builds elements, `$` and `$$` are
 - **New versions (`loadNewVersion`).** Diffs locally by block id plus bigram similarity. Only changed or new paragraphs are re-annotated.
 - **PDF (`importPdf`, `extractLayout`, `blocksToMarkdown`, `labelPart`, `cleanPart`, `runConversions`).** Details below.
 - **Read-aloud (`TTS`).** Details below.
-- **Sync (`Sync`, `serverBackend`, `fileBackend`, `dropboxStore`, `driveStore`, `Auth`).** Details below.
+- **Sync (`Sync`, `fileBackend`, `dropboxStore`, `driveStore`, `Auth`).** Details below.
 - **arXiv (`arxivId`, `fetchArxivPdf`, `arxivDialog`).** arXiv serves PDFs with `Access-Control-Allow-Origin: *`, so the browser downloads them directly and hands them to `importPdf`.
 - **Flashcards (`SRS`, `Cards`, `Screen`, `openDecks`, `openDeck`, `startStudy`, `editCard`, `cardsWithClaude`, `cardFromSelection`).** Details below.
 - **Library (`libraryRecords`, `inferGroups`, `openLibrary`).** 5 records per page, most recent first. Multi-section PDF imports are one expandable group record.
@@ -149,13 +148,12 @@ Models: `P.mainModel` = `claude-sonnet-5`, `P.fastModel` = `claude-haiku-4-5-202
 ### Sync
 
 - **Local first.** IndexedDB is primary. Changes push after a short debounce, and the app pulls on start, on becoming visible, on reconnect, and every 90 seconds.
-- **One merge layer, three backends.** `Sync` holds the merge logic; `Sync.B` is a backend with `listHeads`, `putHead(id, head, baseRev)` (returns `{ok}` or `{conflict: remoteHead}`), `getVer`/`putVer`, `getPack`/`putPack`, `listDecks`/`getDeck`/`putDeck`. `P.syncProvider` is `''`, `'dropbox'`, `'gdrive'` or `'server'` (devices that had a sync key migrate to `'server'`). Changing provider calls `resetSyncState()`, so everything merges into the new place.
+- **One merge layer, two backends.** `Sync` holds the merge logic; `Sync.B` is a backend with `listHeads`, `putHead(id, head, baseRev)` (returns `{ok}` or `{conflict: remoteHead}`), `getVer`/`putVer`, `getPack`/`putPack`, `listDecks`/`getDeck`/`putDeck`. `P.syncProvider` is `''`, `'dropbox'` or `'gdrive'` (an old `'server'` value is reset to `''` at start-up). Changing provider calls `resetSyncState()`, so everything merges into the new place.
 - **Merging.** Text versions are unioned, notes are unioned by id, the newer guide wins, and the push retries. Decks merge card by card, keeping the greater `mod`. Deletions are tombstones (`deleted:true`).
 - **Dropbox and Google Drive (`fileBackend`)** store flat files in one folder: `head.{id}.json`, `ver.{id}.{hash}.md`, `pack.{id}.{hash}.json`, `deck.{id}.json`. A head write is compare-and-swap on the file's revision. Dropbox does it atomically (`mode: update` with `strict_conflict`). Drive has no conditional write, so `driveStore.write` checks `version` just before writing, leaving a small race window. Heads are cached by revision, so a pull reads only changed heads.
 - **Dropbox auth:** OAuth code flow with PKCE, no secret, `token_access_type=offline`; the refresh token lives in `localStorage['gloss.sync.dropbox']`. App-folder access only.
 - **Google auth:** the implicit flow (`response_type=token`, scope `drive.file`) by redirect, with no refresh token. An access token lasts an hour, so `Sync.init` renews it at start-up with a `prompt=none` redirect (once per session), and otherwise shows Reconnect. The folder id is cached in `gloss.sync.gdrive.folder`.
 - **Redirects** return to `location.origin + location.pathname`. That exact URL must be registered with Dropbox and Google. `finishSignIn()` runs first in `boot`, checks `state` against sessionStorage, and cleans the address bar.
-- **This site's server (`serverBackend` plus `netlify/functions/sync.mts`).** Server keys: `head/{id}`, `ver/{id}/{hash}`, `pack/{id}/{hash}`, `deck/{id}`. Head writes need `x-base-rev`, and a mismatch returns 409 with the current head. Auth: header `x-sync-token`, compared against `SYNC_TOKEN` or `SYNC_TOKEN_SHA256`. With neither, it fails closed (503), which is what the public site does. The Settings option appears only when `Sync.probe()` finds a live function (200 or 401). The Netlify MCP env-var tool reports success but reads back nothing, so confirm env vars in the Netlify UI.
 
 ### Flashcards
 
@@ -190,15 +188,15 @@ The shipped guide was produced by running the app's own 18 guide jobs, with thei
 
 No test runner is committed. The pattern that has worked:
 
-1. **Serve the app and the real sync function locally.** Load `netlify/functions/sync.mts` under Node 22 with `--experimental-strip-types`, replacing the two Netlify imports with stubs. Serve `public/` from the same small HTTP server, and back the function with an in-memory store implementing `get`, `set`, `setJSON`, `delete`, `list` (with etags), `getWithMetadata` and `getMetadata`. Use a test token.
+1. **Serve `public/` locally** from a small HTTP server.
 2. **Drive it with Playwright (Chromium, headless),** routing `https://api.anthropic.com/**` to a mock that returns SSE. Detect the task from the prompt text (for example `Fill "moves"` or `Blocks to label:`) and return plausible JSON. Inject 429s and a hard 400 to exercise retry and resume.
 3. **Use two browser contexts as two devices** to test sync and merging.
 4. **Mock `speechSynthesis`** for read-aloud tests (headless Chromium has no voices).
 5. **Syntax check:** extract the `<script>` and run `node --check`.
 
-6. **Two-device sync against mocks.** Tests route Dropbox (`/oauth2/token`, `files/list_folder`, `download`, `upload` with conflicts, `delete_v2`) and Drive (folder query, multipart create, media PATCH, `version`) to in-memory stores shared by two contexts. They route the OAuth pages to 302s back to the app, and run the real `sync.mts` behind the local server. Stamp a copy of `public/` (as build.sh does) to set `CONFIG`, and serve pages with the CSP from `scripts/headers.mjs`, so violations show up in tests. Block service workers in test contexts, because a service worker's fetches bypass Playwright's routes.
+6. **Two-device sync against mocks.** Tests route Dropbox (`/oauth2/token`, `files/list_folder`, `download`, `upload` with conflicts, `delete_v2`) and Drive (folder query, multipart create, media PATCH, `version`) to in-memory stores shared by two contexts. They route the OAuth pages to 302s back to the app. Stamp a copy of `public/` (as build.sh does) to set `CONFIG`, and serve pages with the CSP from `scripts/headers.mjs`, so violations show up in tests. Block service workers in test contexts, because a service worker's fetches bypass Playwright's routes.
 
-Things verified this way: Dropbox, Drive and server sync between two devices (edits, concurrent questions, flashcards, deletions, token refresh, Drive reconnect), onboarding (key check, both vault modes, cost estimate, backup and restore), the page-to-app hand-off, the arXiv sample, citation narrowing against a real bundle, the static export (no API or sync requests, no IndexedDB, position and deep links), guide queue resume, cache prefix identity across jobs, version diffs, PDF chapter import against `pdftotext` word counts, two-device sync including conflicts and deletions, the SRS intervals, library grouping and pagination, and end-of-text navigation.
+Things verified this way: Dropbox and Drive sync between two devices (edits, concurrent questions, flashcards, deletions, token refresh, Drive reconnect), onboarding (key check, both vault modes, cost estimate, backup and restore), the page-to-app hand-off, the arXiv sample, citation narrowing against a real bundle, the static export (no API or sync requests, no IndexedDB, position and deep links), guide queue resume, cache prefix identity across jobs, version diffs, PDF chapter import against `pdftotext` word counts, two-device sync including conflicts and deletions, the SRS intervals, library grouping and pagination, and end-of-text navigation.
 
 ## Known limitations and ideas
 

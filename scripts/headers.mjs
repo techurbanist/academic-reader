@@ -1,4 +1,4 @@
-// Writes Netlify's _headers: a Content-Security-Policy for the app's pages that allows the app's inline script by
+// Writes _headers (read by Cloudflare and Netlify): a Content-Security-Policy for the app's pages that allows the app's inline script by
 // hash, its pinned libraries, and connections only to the services the app uses; plus nosniff and a referrer policy.
 // Run by build.sh after stamping: node scripts/headers.mjs public
 // Shared pages ("web page for readers" exports) are hosted on a separate subdomain, never on the app's origin:

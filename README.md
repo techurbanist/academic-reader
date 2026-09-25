@@ -60,17 +60,17 @@ Local copies are primary. Changes upload after a few seconds, and the app checks
 
 ## Running your own copy
 
-The public app runs as a static-assets Worker on Cloudflare (`wrangler.jsonc`; `bash build.sh && npx wrangler deploy`). A Netlify deploy also works, and is the option to choose if you want sync through your own server, since the sync function runs on Netlify.
+The app is static files with no server-side code, so any static host works. `bash build.sh` stamps the settings below into `public/` and writes `public/_headers` (the Content-Security-Policy); then publish `public/`.
 
-The app is a static page plus one optional serverless function, and it deploys to Netlify's free tier.
+- **Cloudflare** (what the public app uses): `bash build.sh && npx wrangler deploy`, with `wrangler.jsonc`. `.github/workflows/deploy.yml` does this on every push to `main`.
+- **Netlify:** `netlify.toml` is included.
 
 [![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/techurbanist/academic-reader)
 
-Environment variables (Netlify → Project configuration → Environment variables), all optional:
+Environment variables for the build, all optional:
 
 | Variable | What it does |
 |---|---|
-| `SYNC_TOKEN` | Turns on sync through your own site (Netlify Blobs). Use a long random key, and enter the same key on each device under Settings → Sync. `SYNC_TOKEN_SHA256` (the key's SHA-256 in hex) works instead, so the key itself never goes into Netlify. With neither, the sync function refuses every request. |
 | `PUBLIC_URL` | Where shared web pages point readers to. Defaults to the public app. |
 | `DROPBOX_APP_KEY` | Your Dropbox app's key, to offer Dropbox sync (see below). |
 | `GOOGLE_CLIENT_ID` | Your Google OAuth client ID, to offer Google Drive sync (see below). |
@@ -98,7 +98,6 @@ A new Dropbox app allows 500 users. Before it passes 50, apply for production st
 public/index.html          the whole app: HTML, CSS and one script, with no build step or framework
 public/sw.js               offline cache
 public/samples/            the sample paper's recipe and guide (the text itself comes from arXiv)
-netlify/functions/sync.mts optional sync through your own site
 scripts/headers.mjs        writes the Content-Security-Policy, with the hash of the app's script
 build.sh                   stamps the build time and site settings into the app, and writes the headers
 ```

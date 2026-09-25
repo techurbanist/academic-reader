@@ -360,18 +360,18 @@ function wrapRange(root, start, end, make){
 /* ============ error log ============ */
 // A rolling log of errors and warnings, kept on this device so problems can be reported precisely.
 // Never records the API key, sync key, or document text.
-// Per-site settings, stamped by build.sh from Netlify environment variables (see README). Unstamped values
+// Per-site settings, stamped by build.sh from environment variables (see README). Unstamped values
 // (a local copy) count as empty: Dropbox and Google Drive sync are then offered as "not set up here".
 const CONFIG = (()=>{ const v=x=>/^__.*__$/.test(x)?'':x;
   return { publicUrl: v('__PUBLIC_URL__') || 'https://academic-reader.initialloop.com', dropboxAppKey: v('__DROPBOX_APP_KEY__'), googleClientId: v('__GOOGLE_CLIENT_ID__') }; })();
-const APP_VERSION = '2026-09-25.16';
-const APP_BUILD = '__BUILD_TIME__';   // replaced with the UTC deploy time by the Netlify build
+const APP_VERSION = '2026-09-25.17';
+const APP_BUILD = '__BUILD_TIME__';   // replaced with the UTC build time by build.sh
 const buildLabel = b => /^__/.test(b) ? 'local copy' : `${b.replace('T',' ').replace(/Z$/,'')} UTC`;
 const Log = {
   KEY:'gloss.log', MAX:300,
   all(){ try{ return JSON.parse(localStorage.getItem(this.KEY)||'[]'); }catch{ return []; } },
   add(level, where, msg, detail){
-    const clean = v => String(v==null?'':v).replace(/sk-ant-[\w-]+/g,'sk-ant-…').replace(/("x-sync-token"\s*:\s*")[^"]+/g,'$1…').slice(0,2000);
+    const clean = v => String(v==null?'':v).replace(/sk-ant-[\w-]+/g,'sk-ant-…').slice(0,2000);
     const e={t:new Date().toISOString(), level, where:String(where||''), msg:clean(msg), detail:detail?clean(typeof detail==='string'?detail:JSON.stringify(detail)):''};
     const a=this.all(); a.push(e); while (a.length>this.MAX) a.shift();
     try{ localStorage.setItem(this.KEY, JSON.stringify(a)); }catch{}
@@ -421,7 +421,9 @@ const DEF_PREFS = {theme:'auto', font:'literata', fs:19, lh:1.65, measure:34, pa
 let P = Object.assign({}, DEF_PREFS, JSON.parse(localStorage.getItem('gloss.prefs')||'{}'));
 if (P.maxTokens<32000) P.maxTokens=32000;
 P.layers = Object.assign({}, DEF_PREFS.layers, P.layers||{});
-if (P.syncProvider===undefined) P.syncProvider = P.syncToken && P.sync!==false ? 'server' : '';
+// Sync through the site's own server was removed: devices that used it go back to no sync.
+if (P.syncProvider===undefined || P.syncProvider==='server') P.syncProvider='';
+delete P.syncToken; delete P.sync;
 const savePrefs = () => localStorage.setItem('gloss.prefs', JSON.stringify(P));
 
 /* ============ key vault (PBKDF2 + AES-GCM) ============ */
@@ -1098,7 +1100,6 @@ function openSettings(){ fillVersion();
       vm?ext(CONSOLE.limits,'Usage and limits'):null));
   // Sync
   const prov=Sync.provider();
-  const srvSlot=h('div');
   const choice=(p, label, note) => { const A=Auth[p], on=prov===p;
     return h('div',{class:'syncopt'+(on?' on':'')}, h('div',{}, h('b',{},label), h('div',{class:'muted small'}, !A.ready()?'Not set up on this site.':note)),
       on?h('button',{class:'btn',onclick:async()=>{ if (!confirm(`Stop syncing with ${label}? Everything stays on this device${p==='dropbox'||p==='gdrive'?' and in your '+label:''}.`)) return; await Sync.disconnect(); again(); }},'Disconnect')
@@ -1107,15 +1108,8 @@ function openSettings(){ fillVersion();
     h('p',{class:'small'},'Keep your library, guides, questions and flashcards the same on your phone and computer, in your own cloud storage. Connect the same account on each device.'),
     choice('dropbox','Dropbox','Uses the folder Apps › Academic Reader.'),
     choice('gdrive','Google Drive','Uses a folder called Academic Reader. Google asks you to reconnect now and then.'),
-    srvSlot,
     h('p',{class:'muted small',style:'margin:8px 0 0'},'Sync is optional. Without it, move your library between devices with Download a backup and Restore a backup, under Your data below.'),
     h('div',{class:'syncstat'}, Sync.statusLine(), prov?h('div',{class:'row',style:'margin-top:8px'}, h('button',{class:'btn',onclick:()=>Sync.pullAll(true)},'Sync now')):null));
-  // this site's own server, shown only where the site has one (the owner's deployment)
-  Sync.probe().then(ok=>{ if (!ok && prov!=='server') return;
-    const k=h('input',{type:'password',value:P.syncToken||'',placeholder:'Sync key',autocomplete:'off'});
-    srvSlot.append(h('div',{class:'syncopt'+(prov==='server'?' on':'')}, h('div',{}, h('b',{},'This site’s server'), h('div',{class:'muted small'},'For a copy of Academic Reader you run yourself on Netlify.'),
-        h('div',{class:'row',style:'margin-top:6px'}, k, h('button',{class:'btn',onclick:async()=>{ P.syncToken=k.value.trim(); savePrefs(); if (prov!=='server') await Sync.connect('server'); else await Sync.init(); again(); toast(Sync.needsAuth?'That key was not accepted.':'Sync key saved.'); }},prov==='server'?'Save':'Connect'))),
-      prov==='server'?h('button',{class:'btn',onclick:async()=>{ await Sync.disconnect(); again(); }},'Disconnect'):null)); });
   showDlg([h('h2',{},h('span',{},'Settings'),closeX()),
     h('h3',{},'Connections'), claude, sync,
     h('div',{class:'conn'}, h('div',{class:'t1'},'Looking up sources'), f('OpenAlex API key (optional, free)','openalexKey','text','Used to show abstracts of cited works. Without a key you share a small daily allowance with everyone.')),
@@ -1237,7 +1231,7 @@ function openPrivacy(){
   const row = (dest, when, what) => h('tr',{}, h('td',{},dest), h('td',{},when), h('td',{},what));
   showDlg([h('h2',{},h('span',{},'Data and security'),closeX()),
     h('h3',{},'Architecture'),
-    h('p',{},'Academic Reader is a single-page web app served as static files by Netlify. No server-side code processes your data on this site, and there are no accounts or analytics. Netlify, as the host, may keep standard request logs (IP address, user agent, path requested). The repository includes an optional sync function for self-hosted copies; it is disabled on this site.'),
+    h('p',{},'Academic Reader is a single-page web app served as static files by Cloudflare. No server-side code processes your data on this site, and there are no accounts or analytics. Cloudflare, as the host, may keep standard request logs (IP address, user agent, path requested).'),
     h('h3',{},'Stored in your browser'),
     h('ul',{class:'plain'},
       li(h('b',{},'IndexedDB “gloss”: '),'documents, guides, saved questions and answers, flashcard decks.'),
@@ -1279,7 +1273,7 @@ function openPrivacy(){
 async function backupAll(){
   const docs=(await DB.all()).filter(d=>!d.deleted && !d.convert).map(({sync,dirty,editSeq,...d})=>d);
   const decks=(await Decks.all()).filter(k=>!k.deleted).map(({etag,dirty,...k})=>k);
-  const {syncToken, ...prefs}=P;
+  const prefs={...P};
   download(`academic-reader-backup-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify({schema:'gloss-backup/1', at:Date.now(), app:APP_VERSION, docs, decks, prefs}));
   toast(`Backup saved: ${docs.length} text${docs.length===1?'':'s'}, ${decks.length} flashcard deck${decks.length===1?'':'s'}. The Claude key is not included.`, 5000);
 }
@@ -2488,39 +2482,14 @@ document.addEventListener('visibilitychange',()=>{ if (document.visibilityState=
 
 /* ============ sync: where the data goes ============ */
 /* The merge logic (Sync, below) talks to a backend with a few operations: heads with a revision check, immutable
-   text versions and guides, and flashcard decks. Three backends: this site's own server (/api/sync, Netlify Blobs),
-   and the reader's own Dropbox or Google Drive, reached straight from the browser. The two cloud drives share one
-   adapter over a tiny file store (list, read, write with a revision check, remove). */
+   text versions and guides, and flashcard decks. The backends are the reader's own Dropbox or Google Drive, reached
+   straight from the browser. Both share one adapter over a tiny file store (list, read, write with a revision check,
+   remove). */
 const vh = md => fnv(md)+md.length.toString(36);
 const packHash = pk => pk ? fnv(JSON.stringify(pk)) : '';
 class NeedsAuth extends Error {}
 class Conflict extends Error {}
 const SYNC_FOLDER = 'Academic Reader';
-
-function serverBackend(){
-  const api = async (path, opts={}) => {
-    const r = await fetch('/api/sync/'+path, {...opts, credentials:'same-origin', headers:{...(opts.headers||{}), ...(P.syncToken?{'x-sync-token':P.syncToken}:{})}});
-    const ct=r.headers.get('content-type')||'';
-    if (r.status===401 && ct.includes('json')) throw new NeedsAuth('Enter your sync key to sync with this site’s server.');
-    if (r.status===503 && ct.includes('json')) throw new Error('Sync is not set up on this site’s server (no SYNC_TOKEN).');
-    if (r.status===401||r.status===403||(r.ok && ct.includes('text/html'))) throw new NeedsAuth('This site needs you to be signed in to Netlify to sync.');
-    return r;
-  };
-  const ok = async r => { if (!r.ok) throw new Error('sync request failed ('+r.status+')'); return r; };
-  const put = (path, body, headers={}) => api(path,{method:'PUT',headers,body}).then(ok);
-  return {
-    listHeads: async () => (await ok(await api('list'))).json(),
-    async putHead(id, head, base){ const r=await api(`head/${id}`,{method:'PUT',headers:{'content-type':'application/json','x-base-rev':String(base)},body:JSON.stringify(head)});
-      if (r.status===409) return {conflict:await r.json()}; await ok(r); return {ok:true}; },
-    getVer: async (id,h) => { const r=await api(`ver/${id}/${h}`); return r.ok ? r.text() : null; },
-    putVer: (id,h,md) => put(`ver/${id}/${h}`, md),
-    getPack: async (id,h) => { const r=await api(`pack/${id}/${h}`); return r.ok ? r.json() : null; },
-    putPack: (id,h,pk) => put(`pack/${id}/${h}`, JSON.stringify(pk)),
-    listDecks: async () => (await ok(await api('decks'))).json(),
-    getDeck: async id => { const r=await api(`deck/${id}`); return r.ok ? r.json() : null; },
-    putDeck: async (id, body) => (await (await put(`deck/${id}`, JSON.stringify(body), {'content-type':'application/json'})).json()).etag,
-  };
-}
 
 // The same operations over a folder of files. Heads are compare-and-swap on the file's revision.
 function fileBackend(fs){
@@ -2731,7 +2700,7 @@ function driveStore(){
   };
   return store;
 }
-function makeBackend(p){ return p==='server' ? serverBackend() : p==='dropbox' ? fileBackend(dropboxStore()) : p==='gdrive' ? fileBackend(driveStore()) : null; }
+function makeBackend(p){ return p==='dropbox' ? fileBackend(dropboxStore()) : p==='gdrive' ? fileBackend(driveStore()) : null; }
 // Changing where data syncs to: forget the old revisions, so everything is merged into the new place from scratch.
 async function resetSyncState(){
   for (const d of await DB.all()){ if (d.deleted){ await DB.del(d.id); continue; } delete d.sync; d.dirty=true; await DB.put(d); if (DOC && DOC.id===d.id) DOC=d; }
@@ -2742,24 +2711,21 @@ async function resetSyncState(){
 const Sync = {
   B:null, needsAuth:false, busy:new Set(), timers:{}, last:null, error:'', running:false,
   on(){ return !!this.B && !this.needsAuth; },
-  // Does this site run the sync function with a key set? (Only a copy someone deploys for themselves does.)
-  probe(){ return this._probe ||= fetch('/api/sync/ping',{headers:P.syncToken?{'x-sync-token':P.syncToken}:{}})
-    .then(r=>(r.headers.get('content-type')||'').includes('json') && [200,401].includes(r.status)).catch(()=>false); },
   provider(){ return P.syncProvider||''; },
   fail(e, where){ if (e instanceof NeedsAuth){ this.needsAuth=true; this.error=e.message; } else { this.error=e.message; Log.add('warn', where, e.message); } },
   async init(){
     if (STATIC) return;
     this.B=null; this.needsAuth=false; this.error='';
     const p=this.provider(); if (!p) return;
-    if (p!=='server' && !Auth[p].ready()){ this.error=`${Auth[p].label} sync is not set up on this site.`; return; }
-    if (p!=='server' && !Auth[p].connected()){ this.needsAuth=true; this.error=`Connect ${Auth[p].label} to sync.`; return; }
+    if (!Auth[p]){ P.syncProvider=''; savePrefs(); return; }
+    if (!Auth[p].ready()){ this.error=`${Auth[p].label} sync is not set up on this site.`; return; }
+    if (!Auth[p].connected()){ this.needsAuth=true; this.error=`Connect ${Auth[p].label} to sync.`; return; }
     this.B=makeBackend(p); this.listen();
     // Google gives browser apps hour-long access with no refresh: at start-up, renew it quietly by a quick redirect.
     if (p==='gdrive'){ const t=jget(Auth.gdrive.key); if (t && !(t.access && Date.now()<t.exp) && !sessionStorage.getItem('gloss.gdrive.silentFailed')) return Auth.gdrive.start(true); }
     await this.pullAll();
   },
   async connect(p){
-    if (p==='server'){ P.syncProvider='server'; savePrefs(); await resetSyncState(); return this.init(); }
     if (Auth[p]) return Auth[p].start();
   },
   async disconnect(){
@@ -2897,12 +2863,12 @@ const Sync = {
     else await DB.del(d.id);
   },
   statusText(){
-    const p=this.provider(), where=p==='server'?'this site’s server':p?Auth[p].label:'';
+    const p=this.provider(), where=p?Auth[p].label:'';
     return !p ? 'Sync is off: everything stays on this device.' : this.error ? `${where}: ${this.error}` :
       this.last ? `Synced with ${where} ${Math.max(0,Math.round((Date.now()-this.last)/60000))} min ago.` : `Syncing with ${where}…`;
   },
   statusLine(){ return h('p',{class:'muted small',style:'margin:10px 0 0'}, this.statusText(),
-    this.needsAuth && this.provider() && this.provider()!=='server' ? [' ', h('a',{href:'#',onclick:e=>{ e.preventDefault(); Sync.connect(Sync.provider()); }},'Reconnect')] : null); }
+    this.needsAuth && this.provider() ? [' ', h('a',{href:'#',onclick:e=>{ e.preventDefault(); Sync.connect(Sync.provider()); }},'Reconnect')] : null); }
 };
 
 /* ============ flashcards ============ */
