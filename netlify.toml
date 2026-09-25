@@ -2,6 +2,12 @@
   publish = "public"
   command = "bash build.sh"
 
+# The Dropbox app key and Google client ID are public identifiers that build.sh writes into the page on purpose
+# (the browser needs them to start sign-in; the app uses PKCE and has no client secret). Netlify's secret scanner
+# would otherwise fail the build on finding their values in the output.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "DROPBOX_APP_KEY,GOOGLE_CLIENT_ID,PUBLIC_URL"
+
 [[headers]]
   for = "/sw.js"
   [headers.values]
