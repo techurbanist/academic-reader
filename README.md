@@ -37,7 +37,9 @@ There is no account and no server holding your data.
 - **What leaves your device:** the paper's text and your questions go to Anthropic when you build a guide or ask something. A cited work's title or a person's name goes to OpenAlex or Wikipedia when you open its card. arXiv receives a request when you import from it. Your library goes to Dropbox or Google Drive only if you turn sync on, into a folder called Academic Reader that the app cannot see beyond.
 - **The site itself** only serves the app. It pins the exact versions of its two libraries (subresource integrity) and sends a Content-Security-Policy that stops the page connecting anywhere except the services above.
 
-While your key is unlocked, anyone using that browser can use it, and so could malicious code running in the page. The measures above close the usual routes; a spend limit on the key is the real safety net.
+While your key is unlocked, anyone using that browser can use it, and so could a malicious browser extension or code injected into the page. The measures above close the usual routes; a spend limit on the key is the real safety net, and deleting the key in the Anthropic Console stops it working at once.
+
+**Check it yourself.** Open your browser's developer tools, choose the Network tab and ask a question: the request carrying your key goes to `api.anthropic.com` and nowhere else. The Application (or Storage) tab shows the key only in encrypted form. And you are trusting that the page this site serves is honest, which is why the code is public and why you can [run your own copy](#running-your-own-copy).
 
 Clearing the site's data in your browser deletes everything in it. Turn on sync, or use **Settings → Download a backup** now and then.
 

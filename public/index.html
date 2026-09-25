@@ -359,7 +359,7 @@ function wrapRange(root, start, end, make){
 // (a local copy) count as empty: Dropbox and Google Drive sync are then offered as "not set up here".
 const CONFIG = (()=>{ const v=x=>/^__.*__$/.test(x)?'':x;
   return { publicUrl: v('__PUBLIC_URL__') || 'https://academic-reader.netlify.app', dropboxAppKey: v('__DROPBOX_APP_KEY__'), googleClientId: v('__GOOGLE_CLIENT_ID__') }; })();
-const APP_VERSION = '2026-09-25.10';
+const APP_VERSION = '2026-09-25.11';
 const APP_BUILD = '__BUILD_TIME__';   // replaced with the UTC deploy time by the Netlify build
 const buildLabel = b => /^__/.test(b) ? 'local copy' : `${b.replace('T',' ').replace(/Z$/,'')} UTC`;
 const Log = {
@@ -1164,10 +1164,22 @@ function welcome(inDialog){
     h('div',{class:'row'}, h('button',{class:'btn',onclick:go(()=>pickFile('.pdf,application/pdf',importPdf))},'Open a PDF'), h('button',{class:'btn',onclick:go(arxivDialog)},'From arXiv'),
       h('button',{class:'btn',onclick:go(()=>pickFile('.md,.markdown,.txt,.json',importText))},'Open Markdown'), h('button',{class:'btn',onclick:go(pasteDialog)},'Paste text')),
     h('h3',{},'What it costs'),
-    h('p',{},'Reading, listening, flashcards and guides that come with a paper are free. Building a new guide or asking questions uses Claude through your own Anthropic API key, and you pay Anthropic directly: roughly ',
-      priceRange(guideEstimate(8000)),' for the guide to an 8,000-word paper, and a few cents per question. ', h('a',{href:'#',onclick:e=>{ e.preventDefault(); if (inDialog) closeDlg(); openKeySetup(); }},Vault.has()?'Your Claude key':'Connect Claude'),'.'),
+    h('p',{},'Reading is free, and so is everything in a paper that already has a guide: the sample above, and any page someone shares with you. You get the notes, glossary, people, sources, read-aloud and flashcards.'),
+    h('p',{},'Claude does the writing: it builds the guide for a new paper, answers your questions, and can tidy up an imported PDF. For that the app uses your own Anthropic API key, so Anthropic bills you directly at its standard rates. There is no subscription, and nothing is paid to this site. Typical costs with the default model:'),
+    h('ul',{class:'plain'},
+      h('li',{},'A guide for an 8,000-word paper: roughly ',priceRange(guideEstimate(8000)),', once. The app shows an estimate before it starts.'),
+      h('li',{},'A question about a passage: a few cents.'),
+      h('li',{},'Tidying up an imported PDF: about a cent.')),
+    h('p',{},'You buy credit in advance and can set a monthly limit in your Anthropic account, so a bill cannot surprise you. ', h('a',{href:'#',onclick:e=>{ e.preventDefault(); if (inDialog) closeDlg(); openKeySetup(); }},Vault.has()?'Your Claude key':'Connect Claude'),'.'),
     h('h3',{},'Private by design'),
-    h('p',{},'There is no account. Your papers, notes and key stay in this browser, and requests go straight from your browser to Anthropic. ', h('a',{href:'#',onclick:e=>{ e.preventDefault(); if (inDialog) closeDlg(); openPrivacy(); }},'How your data is kept'),'.'));
+    h('p',{},'Academic Reader is a single web page with no server behind it: no account, no database and no analytics. Everything happens in your browser.'),
+    h('ul',{class:'plain'},
+      h('li',{},'Your papers, notes and flashcards are stored in your browser, on your device.'),
+      h('li',{},'Your Claude key is encrypted and stored in your browser. Your browser sends it only to Anthropic, directly. It never passes through this site, and we could not see it if we wanted to.'),
+      h('li',{},'You can check this yourself: open your browser’s developer tools, choose the Network tab, and ask a question. The only request that carries your key goes to api.anthropic.com.'),
+      h('li',{},'You don’t have to take our word for any of it. The app is open source, so you can read the code or run your own copy.'),
+      h('li',{},'The safety net: give the app a key with a low monthly spend limit, and delete that key in your Anthropic account whenever you like.')),
+    h('p',{}, h('a',{href:'#',onclick:e=>{ e.preventDefault(); if (inDialog) closeDlg(); openPrivacy(); }},'How your key and data are protected, in detail'),'.'));
 }
 function openWelcome(){ showDlg([h('h2',{},h('span',{},'Academic Reader'),closeX()), welcome(true)]); }
 
@@ -1209,7 +1221,7 @@ function openKeySetup(resolve=()=>{}, reject=()=>{}, reason){
     h('label',{class:'opt'}, mDev, h('span',{}, h('b',{},'Keep it unlocked on this device. '), 'Convenient. The key is encrypted with a key this browser holds and will not export, so copying the browser’s files does not reveal it, but anyone using this browser can use Claude with it.')),
     h('h3',{},'About you (optional)'),
     h('div',{class:'field'}, about, h('div',{class:'muted small'},'The tutor writes for this reader. You can change it later in Settings.')),
-    h('p',{class:'muted small'},'Your key is sent only to api.anthropic.com. It never reaches this site. ', h('a',{href:'#',onclick:e=>{ e.preventDefault(); openPrivacy(); }},'How your data is kept'),'.'),
+    h('p',{class:'muted small'},'Your browser sends the key only to Anthropic, directly. It is stored encrypted on this device and never passes through this site. ', h('a',{href:'#',onclick:e=>{ e.preventDefault(); openPrivacy(); }},'How your key is protected'),'.'),
     err,
     h('div',{class:'row'}, h('button',{class:'btn primary',onclick:save},'Save'), h('button',{class:'btn',onclick:()=>{ closeDlg(); reject(new Error('No key')); }},'Cancel'))], ()=>reject(new Error('No key')));
   setTimeout(()=>k.focus(),50);
@@ -1218,23 +1230,39 @@ function openKeySetup(resolve=()=>{}, reject=()=>{}, reason){
 function openPrivacy(){
   const li = (...k) => h('li',{},...k);
   showDlg([h('h2',{},h('span',{},'How your data is kept'),closeX()),
-    h('h3',{},'On this device'),
-    h('p',{},'Your papers, guides, questions and flashcards are kept in this browser’s storage on this device. There is no account, and this site does not receive them. Settings stay in this browser too.'),
-    h('h3',{},'What leaves your device, and when'),
+    h('p',{},'It is reasonable to be wary of giving an API key to a website. Here is exactly what Academic Reader does with it, what protects it, where those protections stop, and how to check for yourself.'),
+    h('h3',{},'There is no server'),
+    h('p',{},'This site only serves the app’s page and its files, the same for everyone. It runs no code of its own for you: there is no account, no database, no logging of what you read and no analytics. Once the page has loaded, the app runs entirely in your browser.'),
+    h('h3',{},'How a request to Claude travels'),
+    h('ol',{class:'steps'},
+      li('You build a guide or ask a question.'),
+      li('The app unlocks your key in the browser’s memory: with your passphrase, or with the key your browser holds if you chose “keep unlocked on this device”.'),
+      li('Your browser sends the request straight to Anthropic (api.anthropic.com) over an encrypted connection, with your key in it. Nothing goes through this site.'),
+      li('Anthropic replies to your browser, and the app saves the result on your device.')),
+    h('p',{},'Anthropic allows browser apps like this to call it directly, for exactly this case: each person uses their own key. What you send is covered by ',ext('https://www.anthropic.com/legal/commercial-terms','Anthropic’s API terms'),', the same as any other use of your key.'),
+    h('h3',{},'Where things are kept'),
     h('ul',{class:'plain'},
-      li(h('b',{},'Anthropic'),' (api.anthropic.com): the text of a paper when you build its guide, and the passage and question when you ask something. This is covered by Anthropic’s API terms.'),
-      li(h('b',{},'OpenAlex and Wikipedia'),': the title of a cited work or a person’s name, when you open its card, to show an abstract or a biography.'),
+      li(h('b',{},'Papers, guides, questions and flashcards: '),'in your browser’s storage on this device.'),
+      li(h('b',{},'Your Claude key: '),'encrypted with AES-256-GCM before it is stored. With a passphrase, the encryption key is derived from your passphrase (PBKDF2, 600,000 rounds) and never stored, so the saved key is useless without the passphrase. Without a passphrase, the encryption key is one your browser generates and will not export, so copying the browser’s files does not reveal it.'),
+      li(h('b',{},'Settings: '),'in your browser.')),
+    h('h3',{},'What else leaves your device, and when'),
+    h('ul',{class:'plain'},
+      li(h('b',{},'OpenAlex and Wikipedia'),': the title of a cited work or a person’s name, when you open its card, to show an abstract or a biography. No key, and nothing about you.'),
       li(h('b',{},'arXiv'),': a request for the paper, when you import from arXiv or open the sample.'),
-      li(h('b',{},'Dropbox or Google Drive'),': your library, only if you turn on sync. It goes into a folder called Academic Reader, and the app can reach nothing else in your account.'),
-      li(h('b',{},'This site'),': nothing. It serves the app’s page and nothing more.')),
-    h('h3',{},'Your Claude key'),
-    h('p',{},'The key is encrypted (AES-256-GCM) before it is stored. With a passphrase, the encryption key is derived from the passphrase (PBKDF2, 600,000 rounds) and never stored. Without one, it is a key the browser holds and will not export. The key is sent only to api.anthropic.com.'),
-    h('p',{},'While the key is unlocked, anyone using this browser can use it, and so could malicious code running in this page. The app pins the exact versions of its two libraries and tells the browser to refuse connections to anywhere not listed above, which closes the usual routes. The real safety net is a monthly spend limit on the key, set in the ',ext(CONSOLE.limits,'Anthropic Console'),'.'),
+      li(h('b',{},'Dropbox or Google Drive'),': your library, only if you turn on sync. It goes into a folder called Academic Reader, and the app can reach nothing else in your account. Your Claude key is never synced.')),
+    h('h3',{},'What the protections cover, and what they don’t'),
+    h('ul',{class:'plain'},
+      li(h('b',{},'Pinned libraries. '),'The app loads two libraries from a public CDN. Your browser checks each against a fingerprint built into the page and refuses a file that has been altered, so a compromised CDN cannot slip code in.'),
+      li(h('b',{},'A strict connection policy. '),'The site tells your browser to block connections, images and scripts from anywhere except the services listed above. That shuts the usual ways injected code would send data to an attacker’s own server.'),
+      li(h('b',{},'What they can’t cover. '),'While your key is unlocked, anyone using this browser can use it, and so could a malicious browser extension. And you are trusting that the page this site serves is honest. That is why the code is public, and why you can run your own copy: then you are trusting only yourself.'),
+      li(h('b',{},'The real safety net. '),'Use a key made just for this app, with a low monthly spend limit, set in the ',ext(CONSOLE.limits,'Anthropic Console'),'. If you are ever unsure, delete the key there: it stops working at once, everywhere.')),
+    h('h3',{},'Check it yourself'),
+    h('p',{},'Open your browser’s developer tools (F12 on a computer), choose the Network tab, and ask a question. You will see the request go to api.anthropic.com and nowhere else. The Application or Storage tab shows what is stored: the key appears only in encrypted form.'),
     h('h3',{},'Keeping a backup'),
-    h('p',{},'Clearing this site’s data in your browser deletes everything here. Turn on sync in Settings, or download a backup now and then.'),
+    h('p',{},'Clearing this site’s data in your browser deletes everything here. Turn on sync in Settings, or download a backup now and then. Backups contain your library, never your key.'),
     h('div',{class:'row'}, h('button',{class:'btn',onclick:backupAll},'Download a backup'), h('button',{class:'btn',onclick:()=>{ closeDlg(); pickFile('.json',async f=>importJson(await f.text())); }},'Restore a backup')),
     h('h3',{},'The code'),
-    h('p',{},'Academic Reader is open source: ', ext('https://github.com/techurbanist/academic-reader','github.com/techurbanist/academic-reader'),'. You can read exactly what it does, or run your own copy.')]);
+    h('p',{},'Academic Reader is open source under the MIT licence: ', ext('https://github.com/techurbanist/academic-reader','github.com/techurbanist/academic-reader'),'. You can read exactly what it does, or deploy your own copy to Netlify in a few clicks.')]);
 }
 
 async function backupAll(){

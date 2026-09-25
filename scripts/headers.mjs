@@ -15,7 +15,7 @@ const csp = [
   `script-src 'self' 'sha256-${hash}' https://cdnjs.cloudflare.com`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src https://fonts.gstatic.com",
-  "img-src 'self' data: blob: https:",
+  "img-src 'self' data: blob: https://upload.wikimedia.org",
   `connect-src ${connect.join(' ')}`,
   "worker-src 'self' blob:",
   "manifest-src 'self'",
