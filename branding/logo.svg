@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- Academic Reader: the library icon's two standing books and one leaning book, on the app's navy -->
+  <rect width="256" height="256" fill="#1f2a44"/>
+  <g transform="translate(-6 -3)">
+  <g fill="#f4f5f2">
+    <rect x="56" y="62" width="40" height="130" rx="5"/>
+    <rect x="104" y="78" width="40" height="114" rx="5"/>
+    <rect x="152" y="68" width="38" height="124" rx="5" transform="rotate(14 152 192)"/>
+  </g>
+  <rect x="56" y="84" width="40" height="11" fill="#7b89e0"/>
+  <rect x="104" y="98" width="40" height="11" fill="#2fb5a8"/>
+  <rect x="152" y="90" width="38" height="11" fill="#e3b25a" transform="rotate(14 152 192)"/>
+  <rect x="44" y="192" width="176" height="10" rx="3" fill="#8f99ad"/>
+  </g>
+</svg>
