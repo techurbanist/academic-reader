@@ -17,16 +17,15 @@ Core features:
 - **Sync.** Across devices, through the reader's own Dropbox or Google Drive, or a server of their own.
 - **Web page for readers.** Exports a paper and its guide as one read-only HTML page.
 
-Two Netlify sites build from this repo:
-- **Public:** `https://academic-reader.netlify.app` (project `academic-reader`, site id `cb861cc9-8fd6-4316-be31-be754e886450`). No `SYNC_TOKEN`, so its sync function refuses everything.
-- **Owner's private copy:** `https://gloss-reader-ai07.netlify.app` (project `gloss-reader-ai07`, site id `7b228d40-8263-4fb2-91ab-76331a0e10e8`), behind Netlify team login, with `SYNC_TOKEN_SHA256` set so Brendan's devices sync through its Blobs store.
+Live at `https://academic-reader.netlify.app` (Netlify project `academic-reader`, site id `cb861cc9-8fd6-4316-be31-be754e886450`), built from `main` on GitHub. It has no `SYNC_TOKEN`, so its sync function refuses everything; Brendan syncs through Dropbox like any other user. (His earlier private site, `gloss-reader-ai07`, has been retired.) The app is published under the **Initial Loop** brand; contact `support@initialloop.com`. The privacy policy is `public/privacy.html`, served at `/privacy` and linked from the Dropbox and Google app registrations: keep it accurate when data handling changes.
 
 Repo (public): `git@github.com:techurbanist/academic-reader.git`.
 
 ## Working agreements
 
 - **Never change Netlify access settings** (password or team-login protection). The owner sets them deliberately. An earlier agent overrode them twice by mistake.
-- **Never put secrets in the repo, logs or chat.** The repo is public. Each user's Anthropic key lives only in their browser, encrypted. The owner's sync key is known only to his devices; the private site holds its SHA-256 in `SYNC_TOKEN_SHA256`. Dropbox app keys and Google client IDs are public identifiers, not secrets.
+- **Never put secrets in the repo, logs or chat.** The repo is public. Each user's Anthropic key lives only in their browser, encrypted. Dropbox app keys and Google client IDs are public identifiers, not secrets.
+- **User-facing copy about data and cost is plain technical writing:** state what happens, with no reassurance or salesmanship. The owner found persuasive wording read as untrustworthy.
 - **Nothing about a user goes to our servers.** The app talks directly from the browser to Anthropic, OpenAlex, Wikipedia, arXiv, Dropbox and Google. Keep it that way: no analytics, no proxy. A new outside service also needs adding to the CSP in `scripts/headers.mjs`.
 - **Test before shipping.** Every change so far has been verified in headless Chromium (Playwright) against a mocked Anthropic API, and against a local server running the real sync function (see Testing). Several real bugs were caught this way. Keep doing it.
 - **Be honest about limits.** When something is untested against the real API or real voices, say so. The owner prefers direct pushback to agreement.
@@ -167,7 +166,7 @@ Models: `P.mainModel` = `claude-sonnet-5`, `P.fastModel` = `claude-haiku-4-5-202
 
 When that block is present, `STATIC` is set and the same code runs read-only: `DB` and `Decks` are in-memory stubs (the reading place goes to `localStorage['gloss.static.<id>']`, and no IndexedDB is opened), `claudeStream` throws, `Sync.init` returns, and no service worker is registered. The library button, Ask, deepen buttons, flashcards, settings and end-of-text navigation are hidden. The ⋮ menu becomes `staticMenu`. A dismissible "How to read this" box (`staticIntro`) carries the owner's note and an AI-authorship notice. Paragraph cards offer "Copy a link to it" (`#<bid>` deep links). Reference cards still look up OpenAlex, and person cards still look up Wikipedia; neither needs a key. When changing a feature that needs a key or the server, keep it out of static mode.
 
-A dismissible "Made with Academic Reader" pill (`staticBadge`, `appCard`) links to `CONFIG.publicUrl`, so pages exported from the private site still point at the public app. "Open this paper in Academic Reader" (`openInApp`) opens `publicUrl + '#receive'`. The app (`receiveFromPage`) posts `ar-ready` to `window.opener` until the page answers with `{type:'ar-bundle', bundle}`, accepts it only from `window.opener`, and asks before adding it. A paper it already has, by text hash, just opens.
+A dismissible "Made with Academic Reader" pill (`staticBadge`, `appCard`) links to `CONFIG.publicUrl` (the public app by default, so pages exported from a self-hosted copy still point there). "Open this paper in Academic Reader" (`openInApp`) opens `publicUrl + '#receive'`. The app (`receiveFromPage`) posts `ar-ready` to `window.opener` until the page answers with `{type:'ar-bundle', bundle}`, accepts it only from `window.opener`, and asks before adding it. A paper it already has, by text hash, just opens.
 
 ### Sample paper
 

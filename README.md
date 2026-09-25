@@ -30,6 +30,8 @@ To get a key:
 
 ## Privacy and security
 
+The full [privacy policy](https://academic-reader.netlify.app/privacy) is published by Initial Loop (support@initialloop.com).
+
 There is no account and no server holding your data.
 
 - **Your papers, guides, questions and flashcards** are kept in your browser's storage on your device.

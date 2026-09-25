@@ -12,6 +12,12 @@
   [headers.values]
     Cache-Control = "no-cache"
 
+# The privacy policy at a stable address (linked from the Dropbox and Google app registrations).
+[[redirects]]
+  from = "/privacy"
+  to = "/privacy.html"
+  status = 200
+
 # Asked for by the "Deploy to Netlify" button. All optional; see README.
 [template.environment]
   SYNC_TOKEN = "Optional: a long random key, to sync your devices through this site"
