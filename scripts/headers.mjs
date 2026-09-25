@@ -1,8 +1,9 @@
-// Writes Netlify's _headers. Each HTML page gets a Content-Security-Policy that allows its own inline script by hash,
-// its pinned libraries, and connections only to the services the app uses. The app's pages share one policy; each
-// shared page in artefacts/ gets its own, because it may have been exported by an older version of the app (a
-// different script, so a different hash). Run by build.sh after stamping: node scripts/headers.mjs public
-import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
+// Writes Netlify's _headers: a Content-Security-Policy for the app's pages that allows the app's inline script by
+// hash, its pinned libraries, and connections only to the services the app uses; plus nosniff and a referrer policy.
+// Run by build.sh after stamping: node scripts/headers.mjs public
+// Shared pages ("web page for readers" exports) are hosted on a separate subdomain, never on the app's origin:
+// anything served here can read the app's browser storage, including the encrypted key vault.
+import { readFileSync, existsSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -35,9 +36,6 @@ function main() {
   const rules = [['/*', ['X-Content-Type-Options: nosniff', 'Referrer-Policy: strict-origin-when-cross-origin']]];
   const app = csp(scriptHash(readFileSync(join(root, 'index.html'), 'utf8'), 'index.html'));
   for (const path of ['/', '/index.html', '/privacy', '/privacy.html']) rules.push([path, [`Content-Security-Policy: ${app}`]]);
-  const dir = join(root, 'artefacts');
-  if (existsSync(dir)) for (const f of readdirSync(dir).filter(f => f.endsWith('.html')).sort())
-    rules.push([`/artefacts/${f}`, [`Content-Security-Policy: ${csp(scriptHash(readFileSync(join(dir, f), 'utf8'), 'artefacts/' + f))}`]]);
   process.stdout.write(rules.map(([p, hs]) => `${p}\n${hs.map(x => '  ' + x).join('\n')}\n`).join('\n'));
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
