@@ -361,7 +361,7 @@ function wrapRange(root, start, end, make){
 // (a local copy) count as empty: Dropbox and Google Drive sync are then offered as "not set up here".
 const CONFIG = (()=>{ const v=x=>/^__.*__$/.test(x)?'':x;
   return { publicUrl: v('__PUBLIC_URL__') || 'https://academic-reader.initialloop.com', dropboxAppKey: v('__DROPBOX_APP_KEY__'), googleClientId: v('__GOOGLE_CLIENT_ID__') }; })();
-const APP_VERSION = '2026-09-25.12';
+const APP_VERSION = '2026-09-25.13';
 const APP_BUILD = '__BUILD_TIME__';   // replaced with the UTC deploy time by the Netlify build
 const buildLabel = b => /^__/.test(b) ? 'local copy' : `${b.replace('T',' ').replace(/Z$/,'')} UTC`;
 const Log = {
@@ -2636,29 +2636,37 @@ function dropboxStore(){
   // Dropbox-API-Arg must be ASCII: escape anything else as \uXXXX
   const arg = o => JSON.stringify(o).replace(/[\u007f-￿]/g, c=>'\\u'+c.charCodeAt(0).toString(16).padStart(4,'0'));
   const rpc = (path, body) => call('https://api.dropboxapi.com/2/'+path, {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body)});
-  const err = async r => { const j=await r.json().catch(()=>({})); return j.error_summary||('Dropbox error '+r.status); };
+  // Dropbox answers errors as JSON (error_summary) or, for bad requests such as a missing app permission, as plain
+  // text. Keep the whole answer: the short label alone ("other/...") is not enough to diagnose anything.
+  const err = async (r, what) => { const t=await r.text().catch(()=>''); let j=null; try{ j=JSON.parse(t); }catch{}
+    const msg=`Dropbox ${what}: ${r.status} ${j&&j.error_summary ? j.error_summary : t.replace(/\s+/g,' ').slice(0,300)}`.trim();
+    Log.add('warn','Dropbox', msg, {status:r.status, body:t.slice(0,1000), request:r.headers.get('X-Dropbox-Request-Id')||''});
+    if (/required scope|not permitted to access this endpoint/i.test(t)) return 'The Dropbox app is missing a permission (see the error log). Its owner must enable files.metadata.read, files.content.read and files.content.write, then you disconnect and connect again.';
+    if (j && j.error && j.error['.tag']==='missing_scope') return 'This connection was made before a Dropbox permission was added. Disconnect and connect Dropbox again.';
+    return msg; };
   return {
     async list(){
-      const m=new Map(); let r=await rpc('files/list_folder',{path:'', recursive:false, limit:2000});
-      for(;;){ if (!r.ok) throw new Error(await err(r)); const j=await r.json();
+      const m=new Map(); let r=await rpc('files/list_folder',{path:''});
+      for(;;){ if (!r.ok) throw new Error(await err(r,'list')); const j=await r.json();
         for (const e of j.entries) if (e['.tag']==='file') m.set(e.name, e.rev);
         if (!j.has_more) break; r=await rpc('files/list_folder/continue',{cursor:j.cursor}); }
       return m;
     },
     async read(name){
       const r=await call('https://content.dropboxapi.com/2/files/download',{method:'POST', headers:{'Dropbox-API-Arg':arg({path:'/'+name})}});
-      if (r.status===409) return null; if (!r.ok) throw new Error(await err(r));
+      if (r.status===409){ const t=await r.text(); if (/not_found/.test(t)) return null; throw new Error('Dropbox read: 409 '+t.slice(0,200)); }
+      if (!r.ok) throw new Error(await err(r,'read '+name));
       const meta=JSON.parse(r.headers.get('Dropbox-API-Result')||'{}'); return {text:await r.text(), rev:meta.rev};
     },
     async write(name, text, expect){
       const mode = expect===undefined ? 'overwrite' : expect===null ? 'add' : {'.tag':'update', update:expect};
       const r=await call('https://content.dropboxapi.com/2/files/upload',{method:'POST', headers:{'content-type':'application/octet-stream',
-        'Dropbox-API-Arg':arg({path:'/'+name, mode, autorename:false, mute:true, strict_conflict:true})}, body:new TextEncoder().encode(text)});
-      if (r.status===409){ const e=await err(r); if (/conflict/.test(e)) throw new Conflict(e); throw new Error(e); }
-      if (!r.ok) throw new Error(await err(r));
+        'Dropbox-API-Arg':arg({path:'/'+name, mode, autorename:false, mute:true, ...(expect===undefined?{}:{strict_conflict:true})})}, body:new TextEncoder().encode(text)});
+      if (r.status===409){ const e=await err(r,'write '+name); if (/conflict/.test(e)) throw new Conflict(e); throw new Error(e); }
+      if (!r.ok) throw new Error(await err(r,'write '+name));
       return (await r.json()).rev;
     },
-    async remove(name){ const r=await rpc('files/delete_v2',{path:'/'+name}); if (!r.ok && r.status!==409) throw new Error(await err(r)); },
+    async remove(name){ const r=await rpc('files/delete_v2',{path:'/'+name}); if (!r.ok && r.status!==409) throw new Error(await err(r,'delete '+name)); },
   };
 }
 

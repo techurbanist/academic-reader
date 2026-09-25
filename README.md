@@ -77,7 +77,7 @@ Environment variables (Netlify → Project configuration → Environment variabl
 
 1. At [dropbox.com/developers/apps](https://www.dropbox.com/developers/apps), choose **Create app → Scoped access → App folder**, and name it *Academic Reader*.
 2. **Settings → OAuth 2 → Redirect URIs:** add your site's address with a trailing slash, for example `https://academic-reader.initialloop.com/`. Leave **Allow public clients (Implicit Grant & PKCE)** on.
-3. **Permissions:** tick `files.content.read` and `files.content.write`, then **Submit**.
+3. **Permissions:** tick `files.metadata.read`, `files.content.read` and `files.content.write`, then **Submit**. If you change permissions after connecting, disconnect and connect again in the app: a connection keeps the permissions it was granted.
 4. Copy the **App key** into `DROPBOX_APP_KEY` and redeploy. There is no secret to copy: the app uses PKCE.
 
 A new Dropbox app allows 500 users. Before it passes 50, apply for production status in the App Console.
