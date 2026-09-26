@@ -15,19 +15,21 @@ jobs:
     environment: production
     permissions:
       contents: read
+    # The Cloudflare secrets go only to the steps that need them, and every tool that runs next to them is pinned
+    # to an exact version, so a new release of an action or of wrangler cannot read the token.
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       DROPBOX_APP_KEY: ${{ vars.DROPBOX_APP_KEY }}
       GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
       PUBLIC_URL: https://academic-reader.initialloop.com
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - name: Check configuration
         id: cfg
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::notice::CLOUDFLARE_API_TOKEN is not set; skipping deploy."; echo "skip=1" >> "$GITHUB_OUTPUT"; exit 0; fi
           [ -n "$DROPBOX_APP_KEY" ] || echo "::warning::DROPBOX_APP_KEY is not set; Dropbox sync will show as not set up."
@@ -37,4 +39,7 @@ jobs:
         run: bash build.sh
       - name: Deploy
         if: steps.cfg.outputs.skip != '1'
-        run: npx -y wrangler@4 deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx -y wrangler@4.140.0 deploy

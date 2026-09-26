@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Figtree:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js" integrity="sha512-xeUh+KxNyTufZOje++oQHstlMQ8/rpyzPuM+gjMFYK3z5ILJGE7l2NvYL+XfliKURMpBIKKp1XoPN/qswlSMFA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js" integrity="sha512-jB0TkTBeQC9ZSkBqDhdmfTv1qdfbWpGE72yJ/01Srq6hEzZIz2xkz1e57p9ai7IeHMwEG7HpzG6NdptChif5Pg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.16/purify.min.js" integrity="sha512-flQmhkXNRQ3iUfvtdCobtpMjCb6kE+zLnTiAulAQJ3WykVfy84JvCMOo6vhwWXHTXjR25h9Zj+LyGFRWKjRoag==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
 :root{
   --bg:#f4f5f2; --surface:#ffffff; --ink:#1d2126; --muted:#5e6670; --rule:#d9dcd6; --shade:rgba(29,33,38,.06);
@@ -323,7 +323,14 @@ const sleep = ms => new Promise(r=>setTimeout(r,ms));
 const collapse = s => String(s||'').replace(/\s+/g,' ').trim();
 let toastT;
 function toast(msg, ms=3200, isErr){ if (isErr) Log.add('error','notice',msg); const t=$('#toast'); t.textContent=msg; t.style.display='block'; clearTimeout(toastT); toastT=setTimeout(()=>t.style.display='none', ms); }
-function md(s){ return DOMPurify.sanitize(marked.parse(String(s||''))); }
+// Sanitising Markdown from papers, guides, Claude and shared pages. No style attributes (a paper could lay a
+// full-screen overlay over the app) and no ids (an id="dlgBody" earlier in the page would capture the app's own
+// $('#…') look-ups). renderMd keeps only the footnote ids it writes itself.
+const PURIFY = {FORBID_ATTR:['style','id']};
+const safeHtml = html => DOMPurify.sanitize(html, PURIFY);
+function md(s){ return safeHtml(marked.parse(String(s||''))); }
+// Links built from stored data (OpenAlex, Wikipedia) must be web links, never javascript: or data:.
+const webUrl = u => /^https?:\/\//i.test(String(u||'')) ? String(u) : null;
 function download(name, text, type='application/json'){ const a=h('a',{href:URL.createObjectURL(new Blob([text],{type})),download:name}); document.body.append(a); a.click(); a.remove(); }
 const wordCount = s => (String(s).match(/\S+/g)||[]).length;
 
@@ -364,7 +371,7 @@ function wrapRange(root, start, end, make){
 // (a local copy) count as empty: Dropbox and Google Drive sync are then offered as "not set up here".
 const CONFIG = (()=>{ const v=x=>/^__.*__$/.test(x)?'':x;
   return { publicUrl: v('__PUBLIC_URL__') || 'https://academic-reader.initialloop.com', dropboxAppKey: v('__DROPBOX_APP_KEY__'), googleClientId: v('__GOOGLE_CLIENT_ID__') }; })();
-const APP_VERSION = '2026-09-25.17';
+const APP_VERSION = '2026-09-26.1';
 const APP_BUILD = '__BUILD_TIME__';   // replaced with the UTC build time by build.sh
 const buildLabel = b => /^__/.test(b) ? 'local copy' : `${b.replace('T',' ').replace(/Z$/,'')} UTC`;
 const Log = {
@@ -540,7 +547,8 @@ function preprocessMd(src){
   return s;
 }
 function renderMd(src, into){
-  into.innerHTML = DOMPurify.sanitize(marked.parse(preprocessMd(src)), {ADD_ATTR:['id']});
+  into.innerHTML = DOMPurify.sanitize(marked.parse(preprocessMd(src)), {FORBID_ATTR:['style']});
+  for (const el of $$('[id]', into)) if (!/^fn(ref)?-[\w-]*$/.test(el.id)) el.removeAttribute('id');   // only preprocessMd's footnote ids
   const els = $$('h1,h2,h3,h4,h5,h6,p,li,tr,pre,blockquote', into).filter(el=>{
     if ((el.tagName==='LI'||el.tagName==='BLOCKQUOTE') && el.querySelector('p,li,pre,table')) return false;
     if (el.tagName==='P' && el.closest('li,blockquote') && !el.closest('li,blockquote').querySelector('p')) return false;
@@ -837,7 +845,7 @@ function moveCard(bid, sigIndex){
       w.append(sec('What it says', prose(mv.what)), sec('How it is built', prose(mv.how)));
       if ((mv.signals||[]).length){
         const s=h('section',{},h('h3',{},'Wording that matters'));
-        mv.signals.forEach((sg,i)=>{ const el=h('div',{class:'sig'}, h('q',{},sg.q), ' ', h('span',{class:'prose',html:DOMPurify.sanitize(marked.parseInline(sg.note||''))}));
+        mv.signals.forEach((sg,i)=>{ const el=h('div',{class:'sig'}, h('q',{},sg.q), ' ', h('span',{class:'prose',html:safeHtml(marked.parseInline(sg.note||''))}));
           if (i===sigIndex) el.style.cssText='background:var(--shade);padding:8px 10px;border-radius:8px'; s.append(el); });
         w.append(s);
       }
@@ -882,14 +890,14 @@ async function wikiInto(el, name, hint){
     const title=s.query&&s.query.search[0]&&s.query.search[0].title; if (!title) return;
     const last=name.split(/\s+/).pop().toLowerCase(); if (!title.toLowerCase().includes(last)) return;
     const d=await (await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${enc(title)}`)).json();
-    el.append(h('div',{class:'wiki'}, d.thumbnail?h('img',{src:d.thumbnail.source,alt:''}):null, h('div',{}, h('div',{},d.extract||''), h('a',{class:'small',href:d.content_urls&&d.content_urls.mobile.page,target:'_blank',rel:'noopener'},'Wikipedia: '+d.title))));
+    el.append(h('div',{class:'wiki'}, d.thumbnail&&webUrl(d.thumbnail.source)?h('img',{src:d.thumbnail.source,alt:''}):null, h('div',{}, h('div',{},d.extract||''), h('a',{class:'small',href:webUrl(d.content_urls&&d.content_urls.mobile&&d.content_urls.mobile.page),target:'_blank',rel:'noopener'},'Wikipedia: '+d.title))));
   }catch{}
 }
 function refCard(r){
   return { title:r.key, render(){
     const w=h('div',{class:'card accent-ref'});
     w.append(h('h2',{},r.key), h('p',{class:'kind'}, r.kind?`Cited as ${r.kind}`:'Source'));
-    w.append(h('div',{class:'prose small',style:'margin:0 0 12px',html:DOMPurify.sanitize(marked.parseInline(r.full||''))}));
+    w.append(h('div',{class:'prose small',style:'margin:0 0 12px',html:safeHtml(marked.parseInline(r.full||''))}));
     w.append(sec('Why it is cited here', prose(r.use)));
     const uses=(r.anchors||[]).map(a=>BY.get(anchorBid(a))).filter(Boolean);
     if (uses.length) w.append(sec('Cited at', occList([...new Set(uses)])));
@@ -916,7 +924,7 @@ async function liveRef(r, el){
     const L=r.live;
     done(h('p',{class:'small'}, h('b',{},L.title||''), ` (${L.year||'?'})`, L.venue?`, ${L.venue}`:'', L.cited!=null?`; cited by ${L.cited}`:''),
       L.abstract?h('div',{class:'prose'},h('p',{},L.abstract)):h('p',{class:'muted small'},'No abstract available from OpenAlex.'),
-      h('p',{class:'muted small'},'Matched automatically in OpenAlex; check the title is the right work.'), L.oa?h('div',{class:'links'},h('a',{href:L.oa,target:'_blank',rel:'noopener'},'Open-access copy')):null);
+      h('p',{class:'muted small'},'Matched automatically in OpenAlex; check the title is the right work.'), webUrl(L.oa)?h('div',{class:'links'},h('a',{href:webUrl(L.oa),target:'_blank',rel:'noopener'},'Open-access copy')):null);
   }catch(e){ done(h('p',{class:'muted small'},STATIC?'Could not reach OpenAlex (offline, or its free daily limit is used up). Try the links below.':'Could not reach OpenAlex (offline, or its free daily limit is used up; add a free key in settings).')); }
 }
 function argCard(a){
@@ -1135,9 +1143,11 @@ function openSettings(){ fillVersion();
 const PRICES = {'claude-sonnet-5':[2,10], 'claude-haiku-4-5':[1,5], 'claude-haiku-4-5-20251001':[1,5], 'claude-opus-5':[5,25], 'claude-opus-5-5':[4,20], 'claude-fable-5-1':[10,50]};
 // A rough price for a guide: one cache write of the whole text, cache reads for the other jobs, and an average
 // output per job (JSON plus thinking at medium effort). Real costs vary with the text and the model's thinking.
-function guideEstimate(words, model=P.mainModel){
-  const p=PRICES[model]; if (!p) return null;
-  const prefix=Math.round(words*1.4)+1500, jobs=3+3*Math.max(1,Math.ceil(words/1700));
+const guideJobs = words => 3+3*Math.max(1,Math.ceil(words/1700));
+function guideEstimate(words, model=P.mainModel){ return jobsEstimate(words, guideJobs(words), model); }
+function jobsEstimate(words, jobs, model=P.mainModel){
+  const p=PRICES[model]; if (!p || !jobs) return null;
+  const prefix=Math.round(words*1.4)+1500;
   const usd=((prefix*2 + prefix*0.1*(jobs-1) + jobs*400)*p[0] + jobs*3500*p[1])/1e6;
   return {jobs, lo:usd*0.6, hi:usd*1.6};
 }
@@ -1318,12 +1328,37 @@ async function importText(file){
   await newDoc(text, file.name.replace(/\.\w+$/,''));
   toast('Opened. Build a guide from the ⋮ menu when you are ready.');
 }
+// A guide or a paper from outside (a file, or a page someone shared): keep only the fields a guide has, in the
+// shapes the app expects. Guide jobs come along only when asked for (a bundle file the reader exported).
+function cleanPack(pk, keepJobs){
+  if (!pk || typeof pk!=='object' || Array.isArray(pk)) return null;
+  const arr = (v, ok=()=>true) => Array.isArray(v) ? v.filter(x=>x && typeof x==='object' && ok(x)) : [];
+  return {...pk, schema:'gloss-pack/1', meta:pk.meta && typeof pk.meta==='object' ? pk.meta : {title:'', summary:''},
+    outline:arr(pk.outline), arguments:arr(pk.arguments), people:arr(pk.people, p=>typeof p.name==='string'),
+    references:arr(pk.references, r=>typeof r.key==='string'), terms:arr(pk.terms, t=>typeof t.term==='string'), notes:arr(pk.notes),
+    moves:pk.moves && typeof pk.moves==='object' && !Array.isArray(pk.moves) ? pk.moves : {}, jobs:keepJobs ? arr(pk.jobs) : []};
+}
+// The text versions and guide only: library placement (group), conversion and sync state, and flags such as
+// `sample` are this device's own business and are never taken from outside.
+function bundleDoc(src, keepJobs){
+  if (!src || typeof src!=='object') return null;
+  const now=Date.now(), versions=(Array.isArray(src.versions)?src.versions:[]).filter(v=>v && typeof v.md==='string')
+    .map(v=>({md:v.md, at:+v.at||now, name:typeof v.name==='string'?v.name:''}));
+  if (!versions.length) return null;
+  const title=collapse(typeof src.title==='string'?src.title:'').slice(0,300) || titleFromMd(versions[versions.length-1].md, 'Untitled');
+  return {id:uid(), title, versions, pack:cleanPack(src.pack, keepJobs), created:+src.created||now, updated:now, pos:0};
+}
+async function addBundle(src, keepJobs){
+  const d=bundleDoc(src, keepJobs); if (!d) return toast('There is no text in that file.');
+  DOC=d; await saveDoc(); localStorage.setItem('gloss.last',DOC.id); closeSheet(); renderDoc(); toast('Imported');
+}
 async function importJson(text){
   let j; try{ j=JSON.parse(text); }catch{ return toast('That file is not valid JSON.'); }
+  if (!j || typeof j!=='object') return toast('Not an Academic Reader file.');
   if (j.schema==='gloss-backup/1') return restoreBackup(j);
-  if (j.schema==='gloss-bundle/1'){ DOC=Object.assign(j.doc,{id:uid()}); await saveDoc(); localStorage.setItem('gloss.last',DOC.id); renderDoc(); toast('Imported'); return; }
+  if (j.schema==='gloss-bundle/1') return addBundle(j.doc, true);
   if (j.schema==='gloss-pack/1'){ if (!DOC) return toast('Open the matching document first, then import its guide.');
-    DOC.pack=j; await saveDoc(); renderDoc(); const hit=Object.keys(j.moves||{}).filter(k=>BY.has(k)).length; toast(`Guide attached (${hit} paragraphs matched).`); return; }
+    DOC.pack=cleanPack(j, true); await saveDoc(); renderDoc(); const hit=Object.keys(DOC.pack.moves).filter(k=>BY.has(k)).length; toast(`Guide attached (${hit} paragraphs matched).`); return; }
   toast('Not an Academic Reader file.');
 }
 // Earlier PDF imports have no group: infer one from the shared "Book title: " prefix they were given.
@@ -1529,12 +1564,14 @@ function receiveFromPage(){
   setTimeout(()=>clearInterval(ping), 30000);
   addEventListener('message', async e=>{
     if (got || e.source!==window.opener || !e.data || e.data.type!=='ar-bundle') return;
-    const j=e.data.bundle; if (!j || j.schema!=='gloss-bundle/1' || !j.doc || !Array.isArray(j.doc.versions) || !j.doc.versions.length) return;
+    // Any page can open the app this way, so the bundle is untrusted: only its text and guide are kept, never guide jobs.
+    const j=e.data.bundle; if (!j || j.schema!=='gloss-bundle/1') return;
+    const nd=bundleDoc(j.doc, false); if (!nd) return;
     got=true; clearInterval(ping);
-    const md=j.doc.versions[j.doc.versions.length-1].md, same=(await DB.all()).find(d=>!d.deleted && d.versions.length && vh(d.versions[d.versions.length-1].md)===vh(md));
+    const md=nd.versions[nd.versions.length-1].md, same=(await DB.all()).find(d=>!d.deleted && d.versions.length && vh(d.versions[d.versions.length-1].md)===vh(md));
     if (same){ await openDoc(same.id); return toast('This paper is already in your library.'); }
-    showDlg([h('h2',{},h('span',{},'Add this paper?'),closeX()), h('p',{},`Add “${j.doc.title}” and its guide to your library? It is kept in this browser.`),
-      h('div',{class:'row'}, h('button',{class:'btn primary',onclick:async()=>{ closeDlg(); const {sync, dirty, editSeq, ...d}=j.doc; await importJson(JSON.stringify({schema:'gloss-bundle/1', doc:{...d, created:Date.now(), updated:Date.now()}})); window.scrollTo(0,0); }},'Add to my library'),
+    showDlg([h('h2',{},h('span',{},'Add this paper?'),closeX()), h('p',{},`Add “${nd.title}” and its guide to your library? It is kept in this browser.`),
+      h('div',{class:'row'}, h('button',{class:'btn primary',onclick:async()=>{ closeDlg(); await addBundle(nd, false); window.scrollTo(0,0); }},'Add to my library'),
         h('button',{class:'btn',onclick:closeDlg},'Not now'))]);
   });
   return true;
@@ -1743,7 +1780,14 @@ async function generateGuide(){
   await saveDoc(); renderDoc(true);
   await runQueue(DOC.pack);
 }
-async function resumeGuide(){ const pk=pack(); if (pk && pk.jobs) await runQueue(pk); }
+// Resuming spends money like building does, so it asks first, and says so when the queue is longer than this text needs.
+async function resumeGuide(){
+  const pk=pack(); if (!pk || !pk.jobs) return;
+  const w=wordCount(currentMd()), n=queueState(pk).left; if (!n) return;
+  const odd=n>guideJobs(w)*1.5 ? ` That is more than a whole guide for this text needs (about ${guideJobs(w)}); if you did not start this guide, choose Cancel.` : '';
+  if (!confirm(`Resume the guide? ${n} request${n===1?'':'s'} to Claude, roughly ${priceRange(jobsEstimate(w, n))} with ${P.mainModel}, charged to your Anthropic account.${odd}`)) return;
+  await runQueue(pk);
+}
 
 /* ============ new version: local diff, then targeted update ============ */
 function shingles(s){ const w=s.toLowerCase().match(/[\p{L}\p{N}]+/gu)||[]; const set=new Set(); for (let i=0;i<w.length-1;i++) set.add(w[i]+' '+w[i+1]); if (w.length===1) set.add(w[0]); return set; }
@@ -2046,6 +2090,7 @@ function blocksToMarkdown(blocks, labels = {}) {
 let pdfjsReady=null;
 // pdf.js and its worker are pinned by hash: the library through the script's integrity attribute, the worker by
 // fetching it, checking its SHA-512, and running the checked copy.
+// isEvalSupported:false on every getDocument: pdf.js 3.x can compile font data into code (CVE-2024-4367).
 const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/', PDFJS_SRI='sha512-q+4liFwdPC/bNdhUpZx6aXDx/h77yEQtn4I1slHydcbZK34nLaR3cAeYSJshoxIOq3mjEf7xJE8YWIUHMn+oCQ==', PDFWORKER_SHA512='BbrZ76UNZq5BhH7LL7pn9A4TKQpQeNCHOo65/akfelcIBbcVvYWOFQKPXIrykE3qZxYjmDX573oa4Ywsc7rpTw==';
 function loadPdfJs(){ return pdfjsReady ||= new Promise((res,rej)=>{
   const fail=()=>{ pdfjsReady=null; rej(new Error('Could not load the PDF reader (are you offline?)')); };
@@ -2085,7 +2130,7 @@ const BIB=/^(bibliography|references|works cited|literature cited)$/i;
 
 async function importPdf(file){
   let pdf;
-  try{ Prog.show('Opening the PDF…'); await loadPdfJs(); pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise; }
+  try{ Prog.show('Opening the PDF…'); await loadPdfJs(); pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer(), isEvalSupported:false}).promise; }
   catch(e){ Prog.hide(); return toast('Could not open that PDF: '+e.message, 6000, true); }
   const ranges=await outlineRanges(pdf); Prog.hide();
   const bookTitle=collapse(((await pdf.getMetadata().catch(()=>null))||{}).info?.Title||'') || file.name.replace(/\.pdf$/i,'');
@@ -2360,7 +2405,7 @@ async function openSample(){
     Prog.show('Downloading the paper from arXiv…');
     const sample=await (await fetch('samples/attention.json')).json();
     await loadPdfJs();
-    const pdf=await pdfjsLib.getDocument({data:await (await fetchArxivPdf(sample.source.arxiv)).arrayBuffer()}).promise;
+    const pdf=await pdfjsLib.getDocument({data:await (await fetchArxivPdf(sample.source.arxiv)).arrayBuffer(), isEvalSupported:false}).promise;
     Prog.set('Reading the pages…', null, '');
     const x=await extractLayout(pdf, 1, pdf.numPages, i=>Prog.set(`Reading page ${i} of ${pdf.numPages}`, null, ''));
     const md=applyRecipe(x.blocks, sample.recipe); Prog.hide();
@@ -3007,7 +3052,7 @@ async function openDeck(id){
     const status=x=> x.suspended?'suspended' : (!x.state||x.state==='new')?'new' : x.due<=now?'due now' : x.state==='review'?`due in ${SRS.span(x.due-now)}, interval ${x.ivl}d, ease ${Math.round(x.ease*100)}%`:`learning, due in ${SRS.span(x.due-now)}`;
     const fill=()=>{ list.innerHTML=''; const t=q.value.toLowerCase();
       for (const x of deck.cards.filter(Cards.live).filter(x=>!t||(x.front+' '+x.back).toLowerCase().includes(t)))
-        list.append(h('li',{onclick:()=>editCard(deck,x)}, h('div',{class:'t1',html:DOMPurify.sanitize(marked.parseInline(x.front))}), h('div',{class:'t2'}, status(x)))); };
+        list.append(h('li',{onclick:()=>editCard(deck,x)}, h('div',{class:'t1',html:safeHtml(marked.parseInline(x.front))}), h('div',{class:'t2'}, status(x)))); };
     q.oninput=fill; fill(); if (c.total) w.append(q); w.append(list);
   });
 }

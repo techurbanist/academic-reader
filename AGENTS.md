@@ -29,9 +29,9 @@ Repo (public): `git@github.com:techurbanist/academic-reader.git`.
 - **Nothing about a user goes to our servers.** The app talks directly from the browser to Anthropic, OpenAlex, Wikipedia, arXiv, Dropbox and Google. Keep it that way: no analytics, no proxy. A new outside service also needs adding to the CSP in `scripts/headers.mjs`.
 - **Test before shipping.** Every change so far has been verified in headless Chromium (Playwright) against a mocked Anthropic API, and against mocked Dropbox and Drive APIs (see Testing). Several real bugs were caught this way. Keep doing it.
 - **Be honest about limits.** When something is untested against the real API or real voices, say so. The owner prefers direct pushback to agreement.
-- **Deploying.** GitHub is the source of truth: push to `main` and the Actions workflow deploys. Don't deploy from a working copy except to test on `workers.dev`, and if you do, build in a copy (build.sh edits `public/index.html` in place).
+- **Deploying.** GitHub is the source of truth: push to `main` and the Actions workflow deploys. Don't deploy from a working copy except to test on `workers.dev`, and if you do, build in a copy (build.sh edits `public/index.html` in place). The workflow pins its actions by commit and wrangler by exact version, and gives the Cloudflare secrets only to the steps that use them; keep it that way when updating either.
 - **Bump the service-worker cache name** (`gloss-shell-vN` in `public/sw.js`) on every deploy that changes `index.html`, and bump `APP_VERSION` in `index.html`.
-- **Library upgrades need new hashes.** The CDN scripts carry `integrity` attributes, and the pdf.js worker is checked against `PDFWORKER_SHA512`. Take hashes from `https://api.cdnjs.com/libraries/<name>/<version>?fields=sri`.
+- **Library upgrades need new hashes.** The CDN scripts carry `integrity` attributes, and the pdf.js worker is checked against `PDFWORKER_SHA512`. Take hashes from `https://api.cdnjs.com/libraries/<name>/<version>?fields=sri`. The CSP lists the exact library URLs, and `scripts/headers.mjs` reads them from the page, so it follows an upgrade by itself.
 
 ## Layout
 
@@ -40,8 +40,8 @@ public/index.html        the whole client, about 3,000 lines: HTML, CSS, one scr
 public/sw.js             service worker: page network-first, CDN libs and fonts stale-while-revalidate
 public/samples/attention.json   the sample's recipe and guide (see Sample paper)
 public/manifest.webmanifest, icon-192.png, icon-512.png
-scripts/headers.mjs      writes public/_headers: the app pages' CSP with the sha256 of the inline script, plus nosniff and
-                         referrer policy for everything
+scripts/headers.mjs      writes public/_headers: the app pages' CSP with the sha256 of the inline script and the exact
+                         cdnjs file URLs read from the page, plus nosniff, referrer policy and HSTS for everything
 build.sh                 stamps __BUILD_TIME__, __PUBLIC_URL__, __DROPBOX_APP_KEY__, __GOOGLE_CLIENT_ID__ from env,
                          writes public/version.json, then runs scripts/headers.mjs (so the CSP hash matches the stamped page)
 wrangler.jsonc           the Cloudflare Worker: serves public/ (with its _headers) as static assets
@@ -51,11 +51,11 @@ netlify.toml             for self-hosted Netlify copies: publish = public, comma
 
 `CONFIG` near the top of the script holds the stamped settings. A local unstamped copy treats them as empty: Dropbox and Drive then show "Not set up on this site".
 
-Libraries come from cdnjs as UMD script tags, pinned: marked 12.0.2, DOMPurify 3.1.6, pdf.js 3.11.174 (loaded on demand). Fonts come from Google Fonts. Keep versions pinned.
+Libraries come from cdnjs as UMD script tags, pinned: marked 12.0.2, DOMPurify 3.4.16, pdf.js 3.11.174 (loaded on demand, always with `isEvalSupported:false`: 3.x is affected by CVE-2024-4367). Fonts come from Google Fonts. Keep versions pinned.
 
 ## Client architecture (public/index.html)
 
-Plain DOM. The helper `h(tag, attrs, ...kids)` builds elements, `$` and `$$` are query helpers, and `md()` renders sanitised Markdown. The script is organised in `/* ==== section ==== */` blocks, roughly in this order:
+Plain DOM. The helper `h(tag, attrs, ...kids)` builds elements, `$` and `$$` are query helpers, and `md()` renders sanitised Markdown (`safeHtml`: no `style` or `id` attributes, so a paper or an answer can neither lay an overlay over the app nor capture its `$('#…')` look-ups; `renderMd` keeps only its own footnote ids). Links built from stored data go through `webUrl` (http and https only). The script is organised in `/* ==== section ==== */` blocks, roughly in this order:
 
 - **Error log (`Log`).** A ring buffer of 300 entries in `localStorage['gloss.log']`, redacting keys. Viewer: `openLog()`. Uncaught errors and API failures are logged automatically. Use `Log.add(level, where, msg, detail)` for anything that can fail.
 - **Storage (`Store`, `DB`, `Decks`).** IndexedDB database `gloss`, version 2, with stores `docs` and `decks`. Preferences live in `localStorage['gloss.prefs']` (object `P`, defaults in `DEF_PREFS`). Other localStorage keys: `gloss.vault` (encrypted API key), `gloss.last` (last open document), `gloss.deckSel` (study selection).
@@ -170,6 +170,8 @@ When that block is present, `STATIC` is set and the same code runs read-only: `D
 **Never host exported pages (or any other uploaded HTML) on the app's origin.** A page served from `academic-reader.initialloop.com` can read the app's browser storage, including the library, sync tokens and the encrypted key vault. The owner publishes exports from a separate subdomain (a Cloudflare Worker and R2 in another repo); the page-to-app hand-off works across origins.
 
 A dismissible "Made with Academic Reader" pill (`staticBadge`, `appCard`) links to `CONFIG.publicUrl` (the public app by default, so pages exported from a self-hosted copy still point there). "Open this paper in Academic Reader" (`openInApp`) opens `publicUrl + '#receive'`. The app (`receiveFromPage`) posts `ar-ready` to `window.opener` until the page answers with `{type:'ar-bundle', bundle}`, accepts it only from `window.opener`, and asks before adding it. A paper it already has, by text hash, just opens.
+
+Any page can open the app at `#receive`, so a received bundle is untrusted: `bundleDoc` keeps only the text versions and the guide (reshaped by `cleanPack`), never guide jobs, `group`, `convert`, `sample` or sync state. Bundle files keep their jobs, and `resumeGuide` always asks first with the request count and cost, flagging a queue longer than the text needs.
 
 ### Sample paper
 
