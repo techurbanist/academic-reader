@@ -23,12 +23,16 @@ export function libs(html) {
   if (!scripts.length || !pdfjs) throw new Error('library URLs not found in index.html');
   return { scripts: [...scripts, pdfjs + 'pdf.min.js'], pdfjs };   // the pdf.js worker is fetched from its folder, then run as a blob
 }
+// Cloudflare Web Analytics, which Cloudflare injects into page loads as .../beacon.min.js/<version> (with its own
+// integrity hash). The trailing slash matters: without it the entry matches only the bare file, not the versioned
+// path. Its reports go to /cdn-cgi/rum on this site, which connect-src 'self' covers.
+const BEACON = 'https://static.cloudflareinsights.com/beacon.min.js/';
 const connect = ["'self'", 'https://api.anthropic.com', 'https://api.openalex.org', 'https://en.wikipedia.org', 'https://arxiv.org', 'https://export.arxiv.org',
   'https://api.dropboxapi.com', 'https://content.dropboxapi.com', 'https://www.googleapis.com', 'https://oauth2.googleapis.com',
   'https://fonts.googleapis.com', 'https://fonts.gstatic.com'];
 export const csp = (hash, lib) => [
   "default-src 'self'",
-  `script-src 'self' 'sha256-${hash}' ${lib.scripts.join(' ')}`,
+  `script-src 'self' 'sha256-${hash}' ${lib.scripts.join(' ')} ${BEACON}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src https://fonts.gstatic.com",
   "img-src 'self' data: blob: https://upload.wikimedia.org",

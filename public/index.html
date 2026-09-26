@@ -371,7 +371,7 @@ function wrapRange(root, start, end, make){
 // (a local copy) count as empty: Dropbox and Google Drive sync are then offered as "not set up here".
 const CONFIG = (()=>{ const v=x=>/^__.*__$/.test(x)?'':x;
   return { publicUrl: v('__PUBLIC_URL__') || 'https://academic-reader.initialloop.com', dropboxAppKey: v('__DROPBOX_APP_KEY__'), googleClientId: v('__GOOGLE_CLIENT_ID__') }; })();
-const APP_VERSION = '2026-09-26.1';
+const APP_VERSION = '2026-09-26.2';
 const APP_BUILD = '__BUILD_TIME__';   // replaced with the UTC build time by build.sh
 const buildLabel = b => /^__/.test(b) ? 'local copy' : `${b.replace('T',' ').replace(/Z$/,'')} UTC`;
 const Log = {
@@ -1183,7 +1183,7 @@ function welcome(inDialog){
       h('li',{},'Anthropic API credit is prepaid, and the Anthropic Console can set a monthly spend limit per key. ', link(Vault.has()?'Your Claude key':'Connect Claude', ()=>openKeySetup()),'.')),
     h('h3',{},'Data and storage'),
     h('ul',{class:'plain'},
-      h('li',{},'This site serves static files only. It has no accounts, database, server-side processing of your data, or analytics.'),
+      h('li',{},'This site serves static files only. It has no accounts, database, or server-side processing of your data.'),
       h('li',{},'Papers, guides, questions and flashcards are stored in your browser’s storage on this device.'),
       h('li',{},'Your Anthropic API key is stored in your browser, encrypted with AES-256-GCM. Requests that use it go from your browser to api.anthropic.com without passing through this site.'),
       h('li',{},'Other requests from your browser: OpenAlex and Wikipedia when you open a source or person card, arXiv for imports, and Dropbox or Google Drive only if you turn on sync.'),
@@ -1241,7 +1241,7 @@ function openPrivacy(){
   const row = (dest, when, what) => h('tr',{}, h('td',{},dest), h('td',{},when), h('td',{},what));
   showDlg([h('h2',{},h('span',{},'Data and security'),closeX()),
     h('h3',{},'Architecture'),
-    h('p',{},'Academic Reader is a single-page web app served as static files by Cloudflare. No server-side code processes your data on this site, and there are no accounts or analytics. Cloudflare, as the host, may keep standard request logs (IP address, user agent, path requested).'),
+    h('p',{},'Academic Reader is a single-page web app served as static files by Cloudflare. No server-side code processes your data on this site, and there are no accounts. Cloudflare, as the host, may keep standard request logs (IP address, user agent, path requested).'),
     h('h3',{},'Stored in your browser'),
     h('ul',{class:'plain'},
       li(h('b',{},'IndexedDB “gloss”: '),'documents, guides, saved questions and answers, flashcard decks.'),
@@ -1260,7 +1260,7 @@ function openPrivacy(){
       row('en.wikipedia.org, upload.wikimedia.org','Opening a person card','The person’s name'),
       row('arxiv.org','arXiv import, the sample','The paper’s arXiv identifier'),
       row('Dropbox or Google Drive APIs','Only with sync on','Documents, guides, questions, flashcards, reading position. Not the API key.'),
-      row('cdnjs.cloudflare.com, fonts.googleapis.com, fonts.gstatic.com','Loading the app','Standard requests for the libraries and fonts'))),
+      row('cdnjs.cloudflare.com, fonts.googleapis.com, fonts.gstatic.com, static.cloudflareinsights.com','Loading the app','Standard requests for the libraries and fonts'))),
     h('p',{},'Each of these services receives your IP address with the request, as with any web request, and handles it under its own privacy policy. Anthropic handles API inputs under ',ext('https://www.anthropic.com/legal/commercial-terms','its commercial terms'),'.'),
     h('h3',{},'Browser-enforced restrictions'),
     h('ul',{class:'plain'},
@@ -1488,6 +1488,7 @@ function exportStatic(){
 async function staticHtml(d, opt){
   const res=await fetch('index.html',{cache:'no-cache'}); if (!res.ok) throw new Error(`could not read the app page (${res.status})`);
   let src=await res.text(); if (!src.includes('<script>\n"use strict";')) throw new Error('the app page is not in the expected form');
+  src=src.replace(/<script[^>]*cloudflareinsights[^>]*>\s*<\/script>\s*/g, '');   // Cloudflare's visit counter belongs to this site, not to exported pages
   const pk=JSON.parse(JSON.stringify(d.pack)); delete pk.jobs; if (!opt.notes) pk.notes=[];
   for (const r of pk.references||[]) if (r.live && !r.live.title) delete r.live;
   const data={schema:'gloss-static/1', exported:Date.now(), app:APP_VERSION, intro:opt.intro||'',
@@ -3176,6 +3177,8 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyPrefs)
     staticBadge();
     return;
   }
+  // First, before any await: finishSignIn clears OAuth codes and tokens from the address bar, so Cloudflare's visit
+  // counter (injected by Cloudflare, it reads the address after the page loads) never sees them.
   await finishSignIn(); receiveFromPage();
   const last=localStorage.getItem('gloss.last');
   if (last && await DB.get(last)) await openDoc(last); else renderDoc();
