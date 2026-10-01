@@ -378,7 +378,7 @@ function wrapRange(root, start, end, make){
 // (a local copy) count as empty: Dropbox and Google Drive sync are then offered as "not set up here".
 const CONFIG = (()=>{ const v=x=>/^__.*__$/.test(x)?'':x;
   return { publicUrl: v('__PUBLIC_URL__') || 'https://academic-reader.initialloop.com', dropboxAppKey: v('__DROPBOX_APP_KEY__'), googleClientId: v('__GOOGLE_CLIENT_ID__') }; })();
-const APP_VERSION = '2026-10-01.1';
+const APP_VERSION = '2026-10-01.2';
 const APP_BUILD = '__BUILD_TIME__';   // replaced with the UTC build time by build.sh
 const buildLabel = b => /^__/.test(b) ? 'local copy' : `${b.replace('T',' ').replace(/Z$/,'')} UTC`;
 const Log = {
@@ -1426,7 +1426,9 @@ function pasteDialog(){
   const ta=h('textarea',{rows:12,placeholder:'Paste Markdown or plain text'});
   showDlg([h('h2',{},h('span',{},'Paste text'),closeX()), h('div',{class:'field'},ta), h('button',{class:'btn primary',onclick:async()=>{ if(!ta.value.trim()) return; closeDlg(); await newDoc(ta.value,'Pasted text'); }},'Open')]);
 }
-function restorePos(d){ const b=d.posBid&&BY.get(d.posBid); if (b){ const top=document.getElementById('top').getBoundingClientRect().height; window.scrollTo(0, b.el.getBoundingClientRect().top+scrollY-top-8); } else window.scrollTo(0, d.pos||0); }
+// A place within the first few paragraphs counts as the start: open at the very top, so the box above the text
+// (the guide offer, or a shared page's "How to read this") is in view.
+function restorePos(d){ const b=d.posBid&&BY.get(d.posBid); if (b && BLOCKS.indexOf(b)<3){ window.scrollTo(0,0); return; } if (b){ const top=document.getElementById('top').getBoundingClientRect().height; window.scrollTo(0, b.el.getBoundingClientRect().top+scrollY-top-8); } else window.scrollTo(0, d.pos||0); }
 async function openDoc(id){ const d=await DB.get(id); if (!d) return; if (!DOC || DOC.id!==id) TTS.stop(); DOC=d; localStorage.setItem('gloss.last',id); closeSheet(); renderDoc(); restorePos(d); }
 $('#bLib').onclick=()=>{ LIB.page=0; if (DOC&&DOC.group) LIB.open.add(DOC.group.id); openLibrary(); };
 
