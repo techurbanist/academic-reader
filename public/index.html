@@ -44,7 +44,10 @@ button{cursor:pointer}
 
 /* reader */
 #reader{padding:24px 0 40vh;transition:padding .2s}
-#doc{max-width:calc(var(--measure) + 2*var(--pad) + var(--gutter));margin:0 auto;padding:0 var(--pad) 0 calc(var(--pad) + var(--gutter));font-family:var(--read-font);font-size:var(--fs);line-height:var(--lh);hyphens:auto;-webkit-hyphens:auto}
+#doc{max-width:calc(var(--measure) + 2*var(--pad) + var(--gutter));margin:0 auto;padding:0 var(--pad) 0 calc(var(--pad) + var(--gutter));font-family:var(--read-font);font-size:var(--fs);line-height:var(--lh);hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word}
+/* a long URL or unbroken word breaks at the edge instead of widening the page (tables scroll on their own) */
+#doc a,#sheetBody a{overflow-wrap:anywhere}
+#sheetBody{overflow-wrap:break-word}
 #doc h1,#doc h2,#doc h3,#doc h4{font-weight:600;line-height:1.25;hyphens:none}
 #doc h1{font-size:1.6em;margin:.4em 0 .8em}
 #doc h2{font-size:1.2em;margin:2em 0 .6em}
@@ -144,18 +147,21 @@ body.sheet-open .badge,body.tts-on .badge{display:none}
   #sheet{left:auto;top:0;width:430px;max-height:none;border-radius:0;border-top:0;border-left:1px solid var(--rule);box-shadow:none;transform:translateX(105%);padding-top:env(safe-area-inset-top,0px)}
   body.sheet-open #reader{padding-right:430px}
 }
-.card h2{font:600 22px/1.2 var(--read-font);margin:2px 0 4px}
-.card .kind{font-size:13px;color:var(--muted);margin:0 0 12px}
+/* Cards follow the reader's text size, one step smaller: at the default 19px, card text is 16px. */
+:root{--cs:calc(var(--fs) - 3px)}
+#sheetBody{font-size:var(--cs)}
+.card h2{font:600 calc(var(--cs) * 1.375)/1.2 var(--read-font);margin:2px 0 4px}
+.card .kind{font-size:calc(var(--cs) * .82);color:var(--muted);margin:0 0 12px}
 .card .kind b{font-weight:600}
 .card section{margin:0 0 16px}
-.card h3{font:600 13.5px/1.3 var(--ui);color:var(--muted);margin:18px 0 6px}
-.card .prose{font:16px/1.55 var(--read-font)}
+.card h3{font:600 calc(var(--cs) * .85)/1.3 var(--ui);color:var(--muted);margin:18px 0 6px}
+.card .prose{font:var(--cs)/1.55 var(--read-font)}
 .card .prose p{margin:0 0 .7em}
-.card .prose h3{font:600 14px/1.3 var(--ui);color:var(--ink);margin:1.2em 0 .4em}
+.card .prose h3{font:600 calc(var(--cs) * .88)/1.3 var(--ui);color:var(--ink);margin:1.2em 0 .4em}
 .card .prose ul,.card .prose ol{padding-left:1.2em;margin:0 0 .7em}
 .card .prose details{margin:.4em 0 .8em;padding:8px 10px;border-radius:8px;background:var(--shade)}
-.card .prose summary{cursor:pointer;font-family:var(--ui);font-size:14px}
-.card blockquote.q{margin:0 0 14px;padding:8px 12px;border-left:3px solid var(--c-move);background:var(--shade);font:italic 15px/1.5 var(--read-font);border-radius:0 8px 8px 0}
+.card .prose summary{cursor:pointer;font-family:var(--ui);font-size:calc(var(--cs) * .88)}
+.card blockquote.q{margin:0 0 14px;padding:8px 12px;border-left:3px solid var(--c-move);background:var(--shade);font:italic calc(var(--cs) * .94)/1.5 var(--read-font);border-radius:0 8px 8px 0}
 .card .sig{margin:0 0 10px}
 .card .sig q{font-style:italic;quotes:"“" "”"}
 .card .accent-term h2{color:var(--c-term)} .card .accent-person h2{color:var(--c-person)} .card .accent-ref h2{color:var(--c-ref)} .card .accent-note h2{color:var(--c-note)}
@@ -170,6 +176,7 @@ body.sheet-open .badge,body.tts-on .badge{display:none}
 .list li:hover{background:var(--shade)}
 .list .t1{font-weight:600}
 .list .t2{font-size:13.5px;color:var(--muted);margin-top:2px}
+#sheetBody .list .t2{font-size:calc(var(--cs) * .85)} #sheetBody .small{font-size:calc(var(--cs) * .82)}
 .tabs{display:flex;gap:4px;overflow-x:auto;margin:-4px -4px 12px;padding:4px}
 .wiki{display:flex;gap:12px;align-items:flex-start;margin:0 0 12px;padding:10px;border-radius:10px;background:var(--shade);font-size:14px}
 .wiki img{width:64px;height:64px;object-fit:cover;border-radius:8px;flex:none}
@@ -399,7 +406,7 @@ function wrapRange(root, start, end, make){
 // (a local copy) count as empty: Dropbox and Google Drive sync are then offered as "not set up here".
 const CONFIG = (()=>{ const v=x=>/^__.*__$/.test(x)?'':x;
   return { publicUrl: v('__PUBLIC_URL__') || 'https://academic-reader.initialloop.com', dropboxAppKey: v('__DROPBOX_APP_KEY__'), googleClientId: v('__GOOGLE_CLIENT_ID__') }; })();
-const APP_VERSION = '2026-10-01.3';
+const APP_VERSION = '2026-10-01.4';
 const APP_BUILD = '__BUILD_TIME__';   // replaced with the UTC build time by build.sh
 const buildLabel = b => /^__/.test(b) ? 'local copy' : `${b.replace('T',' ').replace(/Z$/,'')} UTC`;
 const Log = {
