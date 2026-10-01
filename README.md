@@ -15,7 +15,15 @@ Academic Reader explains a paper while you read it: what each paragraph is doing
 
 ## Try it without setting anything up
 
-Open the app and tap **Try it on "Attention Is All You Need"**. Your browser downloads the 2017 paper that introduced the Transformer from arXiv, and it opens with a guide already built. Everything except asking new questions works straight away.
+Open the app and tap **Open the sample: "Attention Is All You Need"**. Your browser downloads the 2017 paper that introduced the Transformer from arXiv, and it opens with a guide already built. Everything except asking new questions works straight away.
+
+## Reading your own paper
+
+1. **Open it:** a PDF, an arXiv link, a Markdown file or pasted text.
+2. **Turn a PDF into text.** The app rebuilds paragraphs, columns, italics and footnotes from the page layout. Claude can then tidy it for a few cents: it marks headings and page clutter and repairs words and lines the PDF broke. Each repair is checked, so the wording stays the PDF's. You can also skip Claude here.
+3. **Build the guide.** When the text opens, a box at the top says how many requests the guide takes and roughly what it costs. It builds in the background while you read, and you can pause and continue it.
+
+The app asks for your Anthropic key the first time a step needs it.
 
 ## What it costs
 

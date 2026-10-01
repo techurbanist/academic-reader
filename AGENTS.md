@@ -58,9 +58,9 @@ Libraries come from cdnjs as UMD script tags, pinned: marked 12.0.2, DOMPurify 3
 Plain DOM. The helper `h(tag, attrs, ...kids)` builds elements, `$` and `$$` are query helpers, and `md()` renders sanitised Markdown (`safeHtml`: no `style` or `id` attributes, so a paper or an answer can neither lay an overlay over the app nor capture its `$('#…')` look-ups; `renderMd` keeps only its own footnote ids). Links built from stored data go through `webUrl` (http and https only). The script is organised in `/* ==== section ==== */` blocks, roughly in this order:
 
 - **Error log (`Log`).** A ring buffer of 300 entries in `localStorage['gloss.log']`, redacting keys. Viewer: `openLog()`. Uncaught errors and API failures are logged automatically. Use `Log.add(level, where, msg, detail)` for anything that can fail.
-- **Storage (`Store`, `DB`, `Decks`).** IndexedDB database `gloss`, version 2, with stores `docs` and `decks`. Preferences live in `localStorage['gloss.prefs']` (object `P`, defaults in `DEF_PREFS`). Other localStorage keys: `gloss.vault` (encrypted API key), `gloss.last` (last open document), `gloss.deckSel` (study selection).
+- **Storage (`Store`, `DB`, `Decks`).** IndexedDB database `gloss`, version 2, with stores `docs` and `decks`. Preferences live in `localStorage['gloss.prefs']` (object `P`, defaults in `DEF_PREFS`). Other localStorage keys: `gloss.vault` (encrypted API key), `gloss.last` (last open document), `gloss.deckSel` (study selection), `gloss.noGuideOffer` (texts whose guide box was dismissed).
 - **Vault.** Two modes, chosen in `openKeySetup`. Passphrase: PBKDF2-SHA256 with 600k iterations, then AES-GCM-256; unlocks for `P.unlockMins` (default 60). Device: a non-extractable AES-GCM key kept in its own IndexedDB database `gloss-keys`; never prompts. Get the key with `await Vault.get()`; with no key it opens the Connect Claude dialog.
-- **Welcome and setup (`welcome`, `openKeySetup`, `checkClaudeKey`, `openPrivacy`, `backupAll`, `restoreBackup`, `guideEstimate`).** The empty state is the welcome page (also in ⋮ → Welcome and help). Connect Claude walks through the Anthropic Console, checks the key with `GET /v1/models`, and asks for an optional "about you" (`P.about`, empty by default; prompts fall back to `DEFAULT_READER`). `guideEstimate` prices a guide from `PRICES` (update them when prices change) and is shown before every build. Backups (`gloss-backup/1`) hold docs, decks and prefs, never the key; restoring keeps whichever copy is newer.
+- **Welcome and setup (`welcome`, `openKeySetup`, `checkClaudeKey`, `openPrivacy`, `backupAll`, `restoreBackup`, `guideEstimate`).** The empty state is the welcome page (also in ⋮ → Welcome and help). It has the sample, then "Read your own paper" in three steps: open it, turn a PDF into text, build the guide; the key is asked for when first needed. Connect Claude walks through the Anthropic Console, checks the key with `GET /v1/models`, and asks for an optional "about you" (`P.about`, empty by default; prompts fall back to `DEFAULT_READER`). `guideEstimate` prices a guide from `PRICES` (update them when prices change) and is shown before every build. Backups (`gloss-backup/1`) hold docs, decks and prefs, never the key; restoring keeps whichever copy is newer.
 - **Claude API (`claudeStream`).** Streaming fetch straight to api.anthropic.com, using the `anthropic-dangerous-direct-browser-access` header. It parses SSE and records the last response in `LAST_DEBUG` (shown in Settings). `claudeJSON` and `GUIDE_SCHEMA` are dead code left from an earlier design and can be removed.
 - **Markdown to blocks (`renderMd`).** Pre-processes `[^n]` footnotes (marked has no footnote support), renders, then marks each block element with `data-bid`. The **block id is `'b' + fnv(lowercased text)`**, with a suffix for duplicates. Stable ids are the backbone of the app: annotations, notes, reading position, flashcard sources and version diffs all key off `bid`. Blocks after a References/Bibliography heading are flagged `bib`.
 - **Rendering overlays (`renderDoc`).** Wraps inline marks (terms, people, citations, key-wording signals, your questions) using `findQuote` (quote matching that normalises whitespace and quote marks) and `wrapRange` (splits text nodes). It adds a margin "rail" button per paragraph with a note, then calls `appendEndNav()` for previous/next.
@@ -100,7 +100,7 @@ A pack with `stub:true` exists only to hold notes before any guide was built; us
 
 ### Guide generation (job queue)
 
-Each guide is a list of small, independent jobs stored in `pack.jobs`, so they can be resumed after the app closes (⋮ → Resume). `planJobs()` creates:
+Each guide is a list of small, independent jobs stored in `pack.jobs`, so they can be resumed after the app closes. `planJobs()` creates:
 
 - one overview job, one arguments job and one people job for the whole text;
 - then, for each chunk of about 1,700 words (`chunkBlocks`), a moves job, a terms job and a references job.
@@ -112,6 +112,8 @@ Every request (`jobRequest`) sends **the same prefix**: the system prompt, then 
 - **Sonnet 5 thinks by default,** and thinking counts against `max_tokens`. `P.maxTokens` defaults to 32000, and effort is set via `output_config.effort` (`P.guideEffort` default `medium`, `P.askEffort` default `high`). Haiku doesn't take `effort`.
 - **The first job runs alone** so it writes the cache; parallel requests only hit the cache once that response has begun. The rest then run three at a time (`pool`), with retry and backoff on 429, 5xx and network errors.
 - **The field is detected automatically.** The overview job reports it (`meta.field`), later prompts use it, and `fieldGroup()` maps it to phil / cs / bio / psych / general for look-up links. The user can correct it in About this text.
+- **The guide box (`guideCard`, `guideOffer`).** Above the text, until a guide exists: what the guide does, the real request count (`planJobs(BLOCKS)`), the estimated cost, and Build (or "Connect Claude and build" with no key). "Not now" hides it on this device (`localStorage['gloss.noGuideOffer']`); ⋮ → Build the guide shows the same content as a dialog. A guide with unfinished or failed jobs shows instead how many are done, what they cost and what the rest should cost, with Continue or Retry. Pressing Build or Continue in the box is the go-ahead, so there is no further confirm; ⋮ → Resume keeps its confirm. Imports no longer toast "build a guide from the ⋮ menu": the box is the next step.
+- **Cost and pausing.** `claudeStream` returns the usage from `message_start` and `message_delta`; `usdOf(model, usage)` prices it from `PRICES` (1-hour cache writes at 2× input, reads at 0.1×). Each job keeps its `usd`, and the progress panel shows the total spent. Its Pause button sets `PAUSING`: requests already sent finish and are kept, no new ones start, and the box offers Continue.
 
 Models: `P.mainModel` = `claude-sonnet-5`, `P.fastModel` = `claude-haiku-4-5-20251001`. Both are editable in Settings.
 
@@ -121,8 +123,9 @@ Models: `P.mainModel` = `claude-sonnet-5`, `P.fastModel` = `claude-haiku-4-5-202
 - **Standard mode (default): `extractLayout`.** Rebuilds the text from item positions, sizes and font names, with no model rewriting. Handled cases, each hard-won:
   - running heads and page numbers (short edge lines that recur or carry numbers; chapter numbers are protected by size);
   - rotated margin notices;
-  - two-column pages (gutter detection on wide rows);
-  - different margins on left and right pages (measured per page);
+  - columns (`columnsOf`): a gutter is a vertical band, about a word wide, where hardly any rows have ink (at most 12%), so prose finds none. Two or three columns; rows with an item crossing a gutter (titles, abstracts, wide tables and figures) form full-width bands kept in their place on the page, and each column is read in turn between them;
+  - different margins on left and right pages (measured per page), and on pages with columns, per column;
+  - bulleted items whose later lines are indented to the item's text (they continue the item; the next bullet starts a new one);
   - first-line-indent paragraphs versus spaced block paragraphs;
   - hanging-indent reference lists;
   - raised footnote markers, and footnotes at the page foot, kept as asides so they don't split paragraphs;
@@ -130,10 +133,17 @@ Models: `P.mainModel` = `claude-sonnet-5`, `P.fastModel` = `claude-haiku-4-5-202
   - zero-width break characters after dashes;
   - italics, identified from font names;
   - small caps that the PDF encodes as odd mixed case ("tHis").
-  Then `labelPart` sends Haiku short excerpts of about 70 blocks and gets back only labels (heading levels, removals, merges, quotes) under a small JSON schema. `blocksToMarkdown` assembles the result.
-- **Thorough mode: `cleanPart`.** Haiku retypes three-page chunks with read-only neighbouring context. Keep it for scans, heavy tables and two-column journal pages that come out jumbled.
-- **No Claude mode:** layout only, with `guessLabels`.
-- **Conversions are resumable.** A document under conversion has `convert:{mode, blocks|pages, parts:[...]}`, saves each part as it finishes, shows a Resume panel, and is excluded from sync until assembled.
+  Then `labelPart` ("With Claude" in the dialog) sends Haiku each part in full (up to 40 blocks or about 2,500 words) and gets back structure labels (heading levels, removals, merges, quotes) plus edits, under a JSON schema. The app checks every edit (`vetEdits`) and keeps only those that pass:
+  - `fixes`: exact find/replace inside a block. Every letter must survive in order, ignoring case; up to three digits or capitals may be dropped (a page number or drop-cap letter caught in a sentence), never a lower-case letter. So a fix can repair "fi eld", "representationlearning", a space in a URL or a lost hyphen, and cannot change a word.
+  - `splits`: cut a block at an exact phrase, optionally making the first part a heading (run-in headings such as "2.1 Related Work There is…").
+  - `rewrites`: retype a run of at most 40 blocks, for scrambled passages (a flattened table, a list run together). At least 98% of the new text's letters must be words found in those blocks, and it must keep at least 80% of their text.
+  Refused edits go back to Claude once with the reason, in the same conversation. `applyEdits` turns the kept edits into blocks (each keeps its original number `n`, so labels still apply) and `blocksToMarkdown` assembles the result. Footnote markers are `\u0001n\u0002` in block text and `[^n]` in what Claude sees and writes.
+- **Retype with Claude: `cleanPart`** (under "Another option" in the dialog). Haiku retypes three-page chunks with read-only neighbouring context; nothing checks its wording. Kept as a last resort for pages the layout pass jumbles. It reads `pageTexts`, which has no column handling, so it does not help with columns.
+- **Without Claude:** layout only, with `guessLabels`.
+- **The key is asked for before the pages are read.** Cancelling it offers to convert without Claude. A conversion whose Claude parts failed can be finished without Claude (`finishWithoutClaude`: the remaining parts get `guessLabels`).
+- **Title.** A PDF whose metadata has no usable title (none, "Microsoft Word - x.doc", a file name) takes the text's first `#` heading once converted (`convert.titleFromText`).
+- **Conversions are resumable.** A document under conversion has `convert:{mode, blocks|pages, parts:[...]}`, saves each part (with its cost, `usd`) as it finishes, shows a progress panel in the page while it runs and a Resume panel after, and is excluded from sync until assembled.
+- **PDFs used to test the layout pass** (`extractLayout` on its own and with mocked edits): BERT (arXiv 1810.04805, two columns with full-width tables), Ioannidis 2005 in PLoS Medicine (three columns, sidebars, pull quotes), Chalmers's "Facing Up" (one column, footnotes), the GPT-4 report (figures beside text) and the sample. Column detection left the single-column ones unchanged and fixed the interleaved lines in the others. The bullet rule merged three items in the sample, so its recipe was renumbered; the sample's Markdown came out byte-identical.
 - **Test PDF:** the owner's copy of Kammerer, *House of Mirrors* (OUP, 357 pages). Chapter 1 (pages 15–51) gave exact wording against `pdftotext`, correct headings and all footnotes.
 
 ### Read-aloud (`TTS`)
@@ -203,7 +213,8 @@ Things verified this way: Dropbox and Drive sync between two devices (edits, con
 ## Known limitations and ideas
 
 - Deleting a saved question on one device while another has unsynced edits to the same text can bring the question back after the merge.
-- In Standard PDF mode, long URLs in references can keep a stray space, and a real hyphenated compound broken at a line end can lose its hyphen. Two-column detection is only lightly tested.
+- Without Claude, long URLs in references can keep a stray space, and a real hyphenated compound broken at a line end can lose its hyphen; with Claude, a checked fix repairs these. Column detection was tested on the five PDFs listed under PDF import, not on the Kammerer book since it changed; re-check a book chapter against `pdftotext` before relying on it.
+- The tidying edits were tested with mocked replies only. Whether Haiku finds the right edits, and how often its rewrites pass the checks, is untested against the real API. A fix may drop a stray number, and that could also remove a real one ("Fig. 3").
 - Reference abstracts come from OpenAlex, which rations unauthenticated requests; an optional key goes in Settings.
 - Dropbox and Drive sync were tested against mocks built from their documentation, never the real services. Try them with a real account before relying on them.
 - Google Drive's check-then-write leaves a small race window; two devices saving the same head at the same instant could lose one write (the next edit re-merges).

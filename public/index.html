@@ -258,6 +258,13 @@ body.tts-on #reader{padding-bottom:50vh}
 #prog .bar{height:4px;border-radius:2px;background:color-mix(in srgb,var(--bg) 25%,transparent);margin-top:8px;overflow:hidden}
 #prog .bar i{display:block;height:100%;width:0;background:var(--bg);transition:width .3s}
 #prog .steps{font-size:12.5px;opacity:.75;margin-top:6px}
+#progBtns:not(:empty){margin-top:10px;display:flex;gap:8px}
+#progBtns button{font:500 13px/1 var(--ui);padding:7px 12px;border-radius:8px;border:1px solid color-mix(in srgb,var(--bg) 40%,transparent);background:transparent;color:var(--bg);cursor:pointer}
+#progBtns button:disabled{opacity:.6;cursor:default}
+.meter{height:6px;border-radius:3px;background:var(--shade);overflow:hidden;margin:0 0 1em}.meter i{display:block;height:100%;background:var(--c-move);transition:width .3s}
+.intro.next h2{font:600 17px/1.3 var(--ui);margin:0 0 .4em}
+.intro.next p{margin:0 0 .6em}
+.intro.next .row{margin-top:10px}
 #toast{position:fixed;z-index:40;left:50%;transform:translateX(-50%);top:calc(64px + env(safe-area-inset-top,0px));padding:10px 16px;border-radius:10px;background:var(--ink);color:var(--bg);font-size:14px;display:none;max-width:calc(100vw - 30px)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -291,7 +298,7 @@ body.tts-on #reader{padding-bottom:50vh}
   <button class="spd" id="ttsRate" aria-label="Reading speed">1×</button>
   <button class="ib" id="ttsStop" aria-label="Stop reading"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
 </div>
-<div id="prog"><div id="progTxt"></div><div class="bar"><i id="progBar"></i></div><div class="steps" id="progSteps"></div><div class="steps" id="progTime"></div></div>
+<div id="prog"><div id="progTxt"></div><div class="bar"><i id="progBar"></i></div><div class="steps" id="progSteps"></div><div class="steps" id="progTime"></div><div id="progBtns"></div></div>
 <div id="toast"></div>
 <section id="screen" aria-modal="true"><header><button class="ib" id="scrBack" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="scrTitle"></h2><button class="ib" id="scrClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header><div id="screenBody"></div></section>
 <input type="file" id="fileIn" hidden>
@@ -371,7 +378,7 @@ function wrapRange(root, start, end, make){
 // (a local copy) count as empty: Dropbox and Google Drive sync are then offered as "not set up here".
 const CONFIG = (()=>{ const v=x=>/^__.*__$/.test(x)?'':x;
   return { publicUrl: v('__PUBLIC_URL__') || 'https://academic-reader.initialloop.com', dropboxAppKey: v('__DROPBOX_APP_KEY__'), googleClientId: v('__GOOGLE_CLIENT_ID__') }; })();
-const APP_VERSION = '2026-09-26.2';
+const APP_VERSION = '2026-10-01.1';
 const APP_BUILD = '__BUILD_TIME__';   // replaced with the UTC build time by build.sh
 const buildLabel = b => /^__/.test(b) ? 'local copy' : `${b.replace('T',' ').replace(/Z$/,'')} UTC`;
 const Log = {
@@ -494,12 +501,13 @@ async function claudeStream(body, onDelta){
       const chunk=buf.slice(0,i); buf=buf.slice(i+2);
       const data = chunk.split('\n').filter(l=>l.startsWith('data:')).map(l=>l.slice(5).trim()).join('');
       if (!data) continue; let ev; try{ ev=JSON.parse(data); }catch{ continue; }
-      if (ev.type==='content_block_start'){ blocks[ev.index]={type:ev.content_block.type, name:ev.content_block.name, text:'', json:''}; if (ev.content_block.type==='thinking') onDelta&&onDelta(null, got, 'thinking'); }
+      if (ev.type==='message_start'){ usage = ev.message&&ev.message.usage || usage; }
+      else if (ev.type==='content_block_start'){ blocks[ev.index]={type:ev.content_block.type, name:ev.content_block.name, text:'', json:''}; if (ev.content_block.type==='thinking') onDelta&&onDelta(null, got, 'thinking'); }
       else if (ev.type==='content_block_delta'){ const b=blocks[ev.index]; const d=ev.delta;
         if (d.type==='text_delta'){ b.text+=d.text; got+=d.text.length; onDelta&&onDelta(b.text, got); }
         else if (d.type==='input_json_delta'){ b.json+=d.partial_json; got+=d.partial_json.length; onDelta&&onDelta(null, got); }
         else if (d.type==='thinking_delta'){ onDelta&&onDelta(null, got, 'thinking'); } }
-      else if (ev.type==='message_delta'){ stop = ev.delta.stop_reason||stop; usage = ev.usage||usage; }
+      else if (ev.type==='message_delta'){ stop = ev.delta.stop_reason||stop; if (ev.usage) usage = {...usage, ...Object.fromEntries(Object.entries(ev.usage).filter(([,v])=>v!=null))}; }
       else if (ev.type==='error'){ Log.add('error','Claude API stream', ev.error&&ev.error.message||'stream error', {model:body.model}); throw new Error('Claude API: '+(ev.error&&ev.error.message||'stream error')); }
     }
   }
@@ -693,6 +701,7 @@ function renderDoc(keepScroll){
   if (DOC.convert){ art.innerHTML=''; BLOCKS=[]; BY=new Map(); $('#docTitle').textContent=DOC.title; art.append(conversionPanel(DOC)); return; }
   BLOCKS = renderMd(currentMd(), art); BY = new Map(BLOCKS.map(b=>[b.bid,b])); blockNum.clear(); BLOCKS.forEach(b=>blockNum.set(b.n,b.bid)); REFNUM.clear();
   if (STATIC && !staticSeen()) art.prepend(staticIntro());
+  { const gc=guideCard(); if (gc) art.prepend(gc); }
   $('#docTitle').textContent = DOC.title; document.title = DOC.title+(STATIC?'':' · Academic Reader');
   const pk = pack(); buildEntityIndex();
   if (pk){
@@ -1127,7 +1136,7 @@ function openSettings(){ fillVersion();
     h('details',{class:'adv'}, h('summary',{},'Advanced'),
       f('Unlock lasts (minutes)','unlockMins','number','For a key protected by a passphrase.'),
       f('Main model (guides and explanations)','mainModel','text','Model ID from the Anthropic API docs.'),
-      f('Fast model (PDF clean-up)','fastModel'),
+      f('Fast model (PDF tidying)','fastModel'),
       f('Max output tokens per request','maxTokens','number','Thinking counts against this limit.'),
       sel('Effort when building guides','guideEffort',[['low','Low (fastest)'],['medium','Medium'],['high','High (slowest, most thorough)']]),
       sel('Effort when answering questions','askEffort',[['low','Low'],['medium','Medium'],['high','High']]),
@@ -1151,7 +1160,14 @@ function jobsEstimate(words, jobs, model=P.mainModel){
   const usd=((prefix*2 + prefix*0.1*(jobs-1) + jobs*400)*p[0] + jobs*3500*p[1])/1e6;
   return {jobs, lo:usd*0.6, hi:usd*1.6};
 }
-const money = x => '$'+(x<10?x.toFixed(2):Math.round(x));
+// What one request cost, from the token counts the API reports (cache writes here are 1-hour: 2× input).
+function usdOf(model, u){ const p=PRICES[model]; if (!p || !u) return 0;
+  return (((u.input_tokens||0) + 2*(u.cache_creation_input_tokens||0) + 0.1*(u.cache_read_input_tokens||0))*p[0] + (u.output_tokens||0)*p[1])/1e6; }
+// Tidying a PDF with Claude: the fast model reads each part in full and writes back short edits.
+function tidyEstimate(words, model=P.fastModel){ const p=PRICES[model]; if (!p) return null;
+  const parts=Math.max(1,Math.ceil(words/2500)), inp=words*1.5+parts*2200, outp=parts*600;
+  return {lo:(inp*p[0]+outp*p[1])/1e6, hi:(inp*p[0]+outp*4*p[1])/1e6}; }
+const money = x => x>0 && x<0.01 ? 'less than $0.01' : '$'+(x<10?x.toFixed(2):Math.round(x));
 const priceRange = e => e ? `${money(e.lo)}–${money(e.hi)}` : 'an amount that depends on the model';
 const CONSOLE = {home:'https://console.anthropic.com/', billing:'https://console.anthropic.com/settings/billing', limits:'https://console.anthropic.com/settings/limits', keys:'https://console.anthropic.com/settings/keys'};
 const ext = (href, text) => h('a',{href, target:'_blank', rel:'noopener'}, text);
@@ -1172,14 +1188,19 @@ function welcome(inDialog){
       feat('Glossary, people, sources','Definitions in the paper’s field, who each person is, and what each cited work is and why it is cited.'),
       feat('Questions','Select text for an explanation, a plain-English version, background, arguments for and against, or quiz questions.'),
       feat('Read-aloud and flashcards','Read-aloud uses your device’s speech voices. Flashcards use SM-2 spaced repetition and export to Anki.')),
-    h('h3',{},'Open a paper'),
-    h('div',{class:'row'}, h('button',{class:'btn',onclick:go(()=>pickFile('.pdf,application/pdf',importPdf))},'PDF'), h('button',{class:'btn',onclick:go(arxivDialog)},'arXiv link'),
-      h('button',{class:'btn',onclick:go(()=>pickFile('.md,.markdown,.txt,.json',importText))},'Markdown'), h('button',{class:'btn',onclick:go(pasteDialog)},'Paste text')),
+    h('h3',{},'Read your own paper'),
+    h('ol',{class:'steps'},
+      h('li',{},h('b',{},'Open it. '),'A PDF, an arXiv link, a Markdown file or pasted text.',
+        h('div',{class:'row',style:'margin:8px 0 4px'}, h('button',{class:'btn',onclick:go(()=>pickFile('.pdf,application/pdf',importPdf))},'PDF'), h('button',{class:'btn',onclick:go(arxivDialog)},'arXiv link'),
+          h('button',{class:'btn',onclick:go(()=>pickFile('.md,.markdown,.txt,.json',importText))},'Markdown'), h('button',{class:'btn',onclick:go(pasteDialog)},'Paste text'))),
+      h('li',{},h('b',{},'Turn a PDF into text. '),'The app rebuilds the text from the page layout, and Claude can tidy it: headings, page clutter, and words and lines the PDF broke. This costs a few cents.'),
+      h('li',{},h('b',{},'Build the guide. '),'When the text opens, a box at the top shows what its guide will cost. You can read while it builds, and pause it.')),
+    h('p',{class:'small'},'Steps 2 and 3 use Claude through your own Anthropic API key. The app asks for the key the first time it needs it; setting one up takes about two minutes. ', link(Vault.has()?'Your Claude key':'Set it up now', ()=>openKeySetup()),'.'),
     h('h3',{},'Cost'),
     h('ul',{class:'plain'},
       h('li',{},h('b',{},'No charge: '),'reading, read-aloud, flashcards, and guides that come with a paper (the sample, or a page someone has shared).'),
-      h('li',{},h('b',{},'Uses your Anthropic API key: '),'building a guide, asking questions, and the PDF clean-up step. Anthropic bills these to your account at its API rates. Nothing is paid to this site.'),
-      h('li',{},h('b',{},'Estimates with the default model (Claude Sonnet 5): '),priceRange(guideEstimate(8000)),' for the guide to an 8,000-word paper; a few cents per question; about one cent for PDF clean-up. Actual cost depends on the length of the text and of Claude’s output.'),
+      h('li',{},h('b',{},'Uses your Anthropic API key: '),'building a guide, asking questions, and tidying a PDF. Anthropic bills these to your account at its API rates. Nothing is paid to this site.'),
+      h('li',{},h('b',{},'Estimates with the default model (Claude Sonnet 5): '),priceRange(guideEstimate(8000)),' for the guide to an 8,000-word paper; a few cents per question; a few cents to tidy a 20-page PDF. Actual cost depends on the length of the text and of Claude’s output.'),
       h('li',{},'Anthropic API credit is prepaid, and the Anthropic Console can set a monthly spend limit per key. ', link(Vault.has()?'Your Claude key':'Connect Claude', ()=>openKeySetup()),'.')),
     h('h3',{},'Data and storage'),
     h('ul',{class:'plain'},
@@ -1255,7 +1276,7 @@ function openPrivacy(){
       li('The API key is sent only in requests to api.anthropic.com. It is not included in sync, backups or exported pages.')),
     h('h3',{},'Network requests'),
     h('table',{class:'dtable'}, h('thead',{}, h('tr',{}, h('th',{},'Destination'), h('th',{},'When'), h('th',{},'What is sent'))), h('tbody',{},
-      row('api.anthropic.com','Building a guide, asking a question, PDF clean-up','Text of the paper or excerpt, your question, your “about you” text, the API key'),
+      row('api.anthropic.com','Building a guide, asking a question, tidying a PDF','Text of the paper or excerpt, your question, your “about you” text, the API key'),
       row('api.openalex.org','Opening a source card','Title or DOI of the cited work; an OpenAlex key if you set one'),
       row('en.wikipedia.org, upload.wikimedia.org','Opening a person card','The person’s name'),
       row('arxiv.org','arXiv import, the sample','The paper’s arXiv identifier'),
@@ -1326,7 +1347,6 @@ async function importText(file){
   const text=await file.text();
   if (/\.json$/i.test(file.name)) return importJson(text);
   await newDoc(text, file.name.replace(/\.\w+$/,''));
-  toast('Opened. Build a guide from the ⋮ menu when you are ready.');
 }
 // A guide or a paper from outside (a file, or a page someone shared): keep only the fields a guide has, in the
 // shapes the app expects. Guide jobs come along only when asked for (a bundle file the reader exported).
@@ -1407,8 +1427,7 @@ function pasteDialog(){
   showDlg([h('h2',{},h('span',{},'Paste text'),closeX()), h('div',{class:'field'},ta), h('button',{class:'btn primary',onclick:async()=>{ if(!ta.value.trim()) return; closeDlg(); await newDoc(ta.value,'Pasted text'); }},'Open')]);
 }
 function restorePos(d){ const b=d.posBid&&BY.get(d.posBid); if (b){ const top=document.getElementById('top').getBoundingClientRect().height; window.scrollTo(0, b.el.getBoundingClientRect().top+scrollY-top-8); } else window.scrollTo(0, d.pos||0); }
-async function openDoc(id){ const d=await DB.get(id); if (!d) return; if (!DOC || DOC.id!==id) TTS.stop(); DOC=d; localStorage.setItem('gloss.last',id); closeSheet(); renderDoc(); restorePos(d);
-  const q=queueState(d.pack); if (q.left && !RUNNING) toast(`The guide is unfinished (${q.left} of ${q.total} parts left). Resume it from the ⋮ menu.`, 6000); }
+async function openDoc(id){ const d=await DB.get(id); if (!d) return; if (!DOC || DOC.id!==id) TTS.stop(); DOC=d; localStorage.setItem('gloss.last',id); closeSheet(); renderDoc(); restorePos(d); }
 $('#bLib').onclick=()=>{ LIB.page=0; if (DOC&&DOC.group) LIB.open.add(DOC.group.id); openLibrary(); };
 
 async function openMore(){
@@ -1587,7 +1606,8 @@ const Prog = {
   t0:0, timer:null, phase:'',
   show(t){ $('#prog').style.display='block'; this.t0=Date.now(); this.set(t,0,''); clearInterval(this.timer); this.timer=setInterval(()=>{ const s=Math.round((Date.now()-this.t0)/1000); $('#progTime').textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')} elapsed`+(this.phase?`, ${this.phase}`:''); },1000); },
   set(t,frac,steps){ if (t!=null) $('#progTxt').textContent=t; if (frac!=null) $('#progBar').style.width=Math.round(frac*100)+'%'; if (steps!=null) $('#progSteps').textContent=steps; },
-  hide(){ $('#prog').style.display='none'; clearInterval(this.timer); this.phase=''; }
+  buttons(...bs){ $('#progBtns').replaceChildren(...bs.filter(Boolean)); },
+  hide(){ $('#prog').style.display='none'; clearInterval(this.timer); this.phase=''; this.buttons(); }
 };
 async function pool(items, n, fn){ const out=new Array(items.length); let i=0; await Promise.all(Array.from({length:Math.min(n,items.length)},async()=>{ while(i<items.length){ const k=i++; out[k]=await fn(items[k],k); } })); return out; }
 
@@ -1737,44 +1757,84 @@ async function runJob(pk, job){
         if (r.stop!=='max_tokens' && ++bad<2){ job.phase='reply was not clean JSON, retrying'; drawJobs(pk); continue; }
         throw new Error(`The reply was not valid JSON: ${explainStop(r.stop)}`);
       }
-      applyJob(pk, job, res); job.status='done'; job.phase='';
+      applyJob(pk, job, res); job.status='done'; job.phase=''; job.usd=(job.usd||0)+usdOf(req.model, r.usage);
       if (r.usage) job.cache = r.usage.cache_read_input_tokens>0 ? 'read' : (r.usage.cache_creation_input_tokens>0?'write':'none');
       break;
     }
   }catch(e){ console.error(e); job.status='failed'; job.error=e.message; job.phase=''; Log.add('error','Guide: '+(LAYER_NAMES[job.layer]||job.layer), e.message, {doc:DOC&&DOC.title, part:job.label}); }
   DOC.packAt=Date.now(); await saveDoc(); renderDoc(true); drawJobs(pk);
 }
+// Pause stops new requests; the ones already sent finish and are kept. Continue picks up the rest.
+let PAUSING=false;
+const spent = pk => ((pk&&pk.jobs)||[]).reduce((a,j)=>a+(j.usd||0),0);
 async function runQueue(pk){
   if (RUNNING) return toast('Already running'); 
   try { await Vault.get(); } catch { return; }
-  RUNNING=true; Prog.show('Building the guide…'); drawJobs(pk);
+  RUNNING=true; PAUSING=false; Prog.show('Building the guide…');
+  const pauseBtn=h('button',{onclick:()=>{ PAUSING=true; pauseBtn.disabled=true; pauseBtn.textContent='Pausing…'; drawJobs(pk); }},'Pause');
+  Prog.buttons(pauseBtn); drawJobs(pk); renderDoc(true);
   try{
     const todo = () => pk.jobs.filter(j=>j.status==='pending'||j.status==='failed'||j.status==='running');
     todo().forEach(j=>{ if (j.status!=='pending'){ j.status='pending'; } });
     const list=todo();
     // The first job writes the cache; parallel requests only hit it once that response has begun.
     if (list.length){ await runJob(pk, list[0]); }
-    await pool(list.slice(1), 3, j=>runJob(pk,j));
+    await pool(list.slice(1), 3, j=>PAUSING?null:runJob(pk,j));
   } finally { RUNNING=false; Prog.hide(); }
-  const failed=pk.jobs.filter(j=>j.status==='failed').length;
-  toast(failed?`${failed} part${failed>1?'s':''} failed. Tap ⋮ then “Resume” to retry just those.`:'Guide complete.', 6000);
+  const q=queueState(pk), cost=spent(pk)?` It cost ${money(spent(pk))}.`:'';
+  if (DOC && DOC.pack===pk) renderDoc(true);
+  if (PAUSING && q.left) toast(`Paused with ${q.left} part${q.left>1?'s':''} to go. Continue from the box at the top of the text.`, 6000);
+  else toast(q.failed?`${q.failed} part${q.failed>1?'s':''} failed. Retry them from the box at the top of the text.`:'Guide complete.'+cost, 6000);
+  PAUSING=false;
 }
 function drawJobs(pk){
   const jobs=pk.jobs||[]; const done=jobs.filter(j=>j.status==='done').length;
   const by={}; for (const j of jobs){ (by[j.layer] ||= {done:0,total:0,failed:0,running:[]}); const b=by[j.layer]; b.total++; if (j.status==='done') b.done++; if (j.status==='failed') b.failed++; if (j.status==='running') b.running.push(j); }
   const running=jobs.filter(j=>j.status==='running');
-  Prog.set(running.length?`Working on: ${running.map(j=>LAYER_NAMES[j.layer]+(j.phase?` (${j.phase})`:'')).join(', ')}`:'Building the guide…', jobs.length?done/jobs.length:0,
-    Object.entries(by).map(([k,b])=>`${LAYER_NAMES[k]} ${b.done}/${b.total}${b.failed?`, ${b.failed} failed`:''}`).join('; '));
+  const usd=spent(pk);
+  Prog.set(PAUSING?'Pausing: finishing the requests already sent…':running.length?`Working on: ${running.map(j=>LAYER_NAMES[j.layer]+(j.phase?` (${j.phase})`:'')).join(', ')}`:'Building the guide…', jobs.length?done/jobs.length:0,
+    Object.entries(by).map(([k,b])=>`${LAYER_NAMES[k]} ${b.done}/${b.total}${b.failed?`, ${b.failed} failed`:''}`).join('; ')+(usd?`. Spent so far: ${money(usd)}`:''));
   Prog.phase='';
 }
 function queueState(pk){ const j=(pk&&pk.jobs)||[]; return {total:j.length, left:j.filter(x=>x.status!=='done').length, failed:j.filter(x=>x.status==='failed').length}; }
 
-async function generateGuide(){
+// The guide's next step, in a box above the text: the offer to build one, or a guide that is not finished.
+// Both show the cost first; pressing Build or Continue there is the go-ahead.
+const NO_OFFER='gloss.noGuideOffer';
+const offerHidden = id => { try{ return JSON.parse(localStorage.getItem(NO_OFFER)||'[]').includes(id); }catch{ return false; } };
+function hideOffer(id){ try{ const a=JSON.parse(localStorage.getItem(NO_OFFER)||'[]'); a.push(id); localStorage.setItem(NO_OFFER, JSON.stringify(a.slice(-500))); }catch{} }
+const requestsCost = (w, n) => `${n} request${n===1?'':'s'} to Claude, roughly ${priceRange(jobsEstimate(w, n))} with ${P.mainModel}, charged to your Anthropic account`;
+function guideOffer(inDialog){
+  const w=wordCount(currentMd()), rebuild=hasGuide(), fromPdf=DOC.versions.length===1 && DOC.versions[0].name==='PDF';
+  const go=async()=>{ if (inDialog) closeDlg(); try{ await Vault.get(); }catch{ return; } await generateGuide(true); };
+  return [h('h2',{}, rebuild?'Rebuild the guide':'Next: build the guide'),
+    h('p',{}, rebuild?'This replaces the current guide. Your saved questions are kept. ':'Claude reads the whole text and writes a note on each paragraph, a glossary, and notes on the people and the works cited. ',
+      `For this text (${w.toLocaleString()} words) that is ${requestsCost(w, planJobs(BLOCKS).length)}.`),
+    h('p',{class:'muted small'}, 'It takes a few minutes. You can read while it works, and pause it at any time.',
+      w>40000?` This text is long; guides work best on one chapter at a time.`:'', fromPdf&&!rebuild?' Skim the text first to check it came out of the PDF well: the guide is built on it.':''),
+    Vault.has()?null:h('p',{class:'small'}, 'Building a guide needs your own Anthropic API key. Setting one up takes about two minutes.'),
+    h('div',{class:'row'}, h('button',{class:'btn primary',onclick:go}, Vault.has()?(rebuild?'Rebuild':'Build the guide'):'Connect Claude and build'),
+      inDialog?h('button',{class:'btn',onclick:closeDlg},'Cancel'):h('button',{class:'btn',onclick:()=>{ hideOffer(DOC.id); renderDoc(true); toast('You can build it later from the ⋮ menu.'); }},'Not now'))];
+}
+function guideCard(){
+  if (STATIC || !DOC || DOC.convert || RUNNING) return null;
+  const pk=pack(), q=queueState(pk);
+  if (q.left){
+    const w=wordCount(currentMd()), usd=spent(pk), err=(pk.jobs.filter(j=>j.status==='failed').pop()||{}).error;
+    // A queue longer than this text needs did not come from building it here (see resumeGuide).
+    const odd=q.left>guideJobs(w)*1.5;
+    return h('aside',{class:'intro next'}, h('h2',{}, q.failed?'Part of the guide failed':'The guide is not finished'),
+      h('p',{}, `${q.total-q.left} of ${q.total} parts are done${usd?`, for ${money(usd)} so far`:''}. The rest is ${requestsCost(w, q.left)}.`),
+      err?h('p',{class:'muted small'},'Last error: '+err):null,
+      odd?h('p',{class:'err small'},`That is more than a whole guide for this text needs (about ${guideJobs(w)}). If you did not start this guide, do not continue it.`):null,
+      h('div',{class:'row'}, h('button',{class:'btn primary',onclick:()=>runQueue(pk)}, q.failed?'Retry':'Continue'), q.failed?h('button',{class:'btn',onclick:openLog},'Error log'):null));
+  }
+  if (hasGuide() || offerHidden(DOC.id)) return null;
+  return h('aside',{class:'intro next'}, ...guideOffer(false));
+}
+async function generateGuide(confirmed){
   if (!DOC) return;
-  { const w=wordCount(currentMd()), e=guideEstimate(w);
-    const cost=`It takes about ${e?e.jobs:'several'} requests to Claude and costs roughly ${priceRange(e)} with ${P.mainModel}, charged to your Anthropic account.`;
-    const long=w>40000?` This text is long (${w.toLocaleString()} words) and guides work best per chapter.`:'';
-    if (!confirm((hasGuide()?'Rebuild the guide from scratch? Your saved questions will be kept. ':'Build a guide for this text? ')+cost+long)) return; }
+  if (confirmed!==true) return showDlg([h('h2',{},h('span',{},hasGuide()?'Rebuild the guide':'Build the guide'),closeX()), ...guideOffer(true).slice(1)]);
   const keepNotes = pack()?pack().notes||[]:[];
   DOC.pack = {schema:'gloss-pack/1', createdAt:Date.now(), model:P.mainModel, docHash:fnv(currentMd()), meta:{title:DOC.title,summary:''}, outline:[], arguments:[], people:[], references:[], moves:{}, terms:[], notes:keepNotes, jobs:[]};
   DOC.pack.jobs = planJobs(BLOCKS);
@@ -1835,6 +1895,39 @@ async function loadNewVersion(file){
 /* Layout-aware text extraction from pdf.js pages.
    Returns blocks: {type:'p'|'h'|'q'|'fn'|'small', text (Markdown inline), size, bold, page, indent, fnKey}
    The words come straight from the PDF; nothing here rewrites them. */
+// Columns on a page, as groups of items in reading order. A gutter is a vertical band of the text area, at least
+// about a word wide, where hardly any rows have ink: ordinary prose has ink almost everywhere, so a single-column page
+// finds none and comes back whole. Rows with an item crossing a gutter (titles, abstracts, wide tables and figures)
+// form full-width bands; between them, each column is read top to bottom before the next. This handles two and
+// three columns, and tables or figures across the top, middle or foot of the page.
+function columnsOf(its, body) {
+  const ink = its.filter(i => i.str.trim() && i.w > 0);
+  if (ink.length < 20) return { cols: [its], multi: false };
+  const X0 = Math.min(...ink.map(i => i.x)), X1 = Math.max(...ink.map(i => i.x + i.w)), W = X1 - X0, bin = 2, nb = Math.ceil(W / bin) + 1;
+  const rows = new Map(); for (const i of ink) { const k = Math.round(i.y); (rows.get(k) || rows.set(k, []).get(k)).push(i); }
+  if (rows.size < 8) return { cols: [its], multi: false };
+  const count = new Array(nb).fill(0);
+  for (const r of rows.values()) { const seen = new Uint8Array(nb); for (const i of r) for (let b = Math.floor((i.x - X0) / bin); b <= Math.floor((i.x + i.w - X0) / bin) && b < nb; b++) seen[b] = 1; for (let b = 0; b < nb; b++) count[b] += seen[b]; }
+  const lim = Math.max(2, rows.size * 0.12), lo = Math.floor(W * 0.15 / bin), hi = Math.ceil(W * 0.85 / bin), minW = Math.max(3, Math.ceil(body * 0.8 / bin));
+  const gutters = [];
+  for (let b = lo; b <= hi; b++) { if (count[b] > lim) continue; let e = b; while (e + 1 <= hi && count[e + 1] <= lim) e++;
+    if (e - b + 1 >= minW) gutters.push({ g0: X0 + b * bin, g1: X0 + (e + 1) * bin }); b = e; }
+  // columns must be at least a fifth of the text area wide
+  const edges = [X0, ...gutters.flatMap(g => [g.g0, g.g1]), X1]; for (let k = 0; k < edges.length; k += 2) if (edges[k + 1] - edges[k] < W * 0.2) return { cols: [its], multi: false };
+  if (!gutters.length) return { cols: [its], multi: false };
+  const colOf = i => { const c = i.x + i.w / 2; let k = 0; while (k < gutters.length && c > (gutters[k].g0 + gutters[k].g1) / 2) k++; return k; };
+  const crosses = i => gutters.some(g => i.x < g.g0 && i.x + i.w > g.g1);
+  // bands from the top down; whitespace items follow the row they sit in
+  const ys = [...rows.keys()].sort((a, b) => b - a), full = new Map(ys.map(y => [y, rows.get(y).some(crosses)]));
+  const out = []; let band = null;
+  for (const y of ys) { const f = full.get(y); if (!band || band.full !== f) { band = { full: f, ys: new Set() }; out.push(band); } band.ys.add(y); }
+  const bandOf = new Map(); out.forEach((bd, k) => { for (const y of bd.ys) bandOf.set(y, k); });
+  const near = y => { let best = ys[0]; for (const k of ys) if (Math.abs(k - y) < Math.abs(best - y)) best = k; return best; };
+  const groups = out.map(bd => bd.full ? [[]] : gutters.map(() => []).concat([[]]));
+  for (const i of its) { const y = rows.has(Math.round(i.y)) ? Math.round(i.y) : near(i.y), k = bandOf.get(y), g = groups[k];
+    (out[k].full ? g[0] : g[colOf(i)]).push(i); }
+  return { cols: groups.flat().filter(g => g.length), multi: true };
+}
 async function extractLayout(pdf, from, to, onPage) {
   const pages = [];
   for (let pn = from; pn <= to; pn++) {
@@ -1866,29 +1959,14 @@ async function extractLayout(pdf, from, to, onPage) {
   const allLines = [];
   for (const p of pages) {
     let its = p.items.slice();
-    // two columns: most wide rows have a gutter (a gap wider than a word space) across the middle of the page
-    const mid = p.width / 2, rows = {};
-    for (const i of its) { const k = Math.round(i.y); (rows[k] ||= []).push(i); }
-    let wide = 0, gutter = 0;
-    for (const r of Object.values(rows)) {
-      r.sort((a, b) => a.x - b.x); const x0 = r[0].x, x1 = Math.max(...r.map(i => i.x + i.w));
-      if (x0 > mid - p.width * 0.2 || x1 < mid + p.width * 0.2) continue; wide++;
-      for (let k = 1; k < r.length; k++) { const g0 = r[k - 1].x + r[k - 1].w, g1 = r[k].x;
-        if (g1 - g0 > body * 1.2 && g0 < mid + p.width * 0.12 && g1 > mid - p.width * 0.12) { gutter++; break; } }
-    }
-    const twoCol = wide >= 8 && gutter > wide * 0.6;
-    const cols = twoCol ? [its.filter(i => i.x < mid && i.x + i.w <= mid + 5), its.filter(i => i.x >= mid - 5 && !(i.x < mid && i.x + i.w <= mid + 5)), ] : [its];
-    if (twoCol) { // full-width items (titles) go first
-      const full = its.filter(i => i.x < mid - 5 && i.x + i.w > mid + 5);
-      cols[0] = cols[0].filter(i => !full.includes(i)); cols[1] = cols[1].filter(i => !full.includes(i)); cols.unshift(full);
-    }
-    for (const col of cols) {
+    const { cols, multi: twoCol } = columnsOf(its, body);
+    for (const [ci, col] of cols.entries()) {
       col.sort((a, b) => b.y - a.y || a.x - b.x);
       const lines = [];
       for (const it of col) {
         const ln = lines.find(l => Math.abs(l.base - it.y) <= Math.max(l.size, it.size) * 0.4);
         if (ln) { ln.items.push(it); ln.x0 = Math.min(ln.x0, it.x); ln.x1 = Math.max(ln.x1, it.x + it.w); if (it.size > ln.size) { ln.size = it.size; ln.base = it.y; } }
-        else lines.push({ items: [it], base: it.y, size: it.size, x0: it.x, x1: it.x + it.w, page: p.pn, twoCol });
+        else lines.push({ items: [it], base: it.y, size: it.size, x0: it.x, x1: it.x + it.w, page: p.pn, twoCol, col: twoCol ? `${p.pn}:${ci}` : null });
       }
       lines.sort((a, b) => b.base - a.base);
       for (const l of lines) { l.items.sort((a, b) => a.x - b.x); allLines.push(l); }
@@ -1902,7 +1980,11 @@ async function extractLayout(pdf, from, to, onPage) {
   const pageMargin = {};
   { const per = {}; for (const l of bodyLines) (per[l.page] ||= []).push(Math.round(l.x0));
     for (const [pg, xs] of Object.entries(per)) pageMargin[pg] = xs.length >= 4 ? mode(xs) : margin; }
-  const mg = l => pageMargin[l.page] ?? margin;
+  // on pages with columns, each column has its own left edge
+  const colMargin = {};
+  { const per = {}; for (const l of bodyLines) if (l.col) (per[l.col] ||= []).push(Math.round(l.x0));
+    for (const [c, xs] of Object.entries(per)) if (xs.length >= 4) colMargin[c] = mode(xs); }
+  const mg = l => (l.col && colMargin[l.col]) ?? pageMargin[l.page] ?? margin;
   const dys = []; for (let i = 1; i < bodyLines.length; i++) if (bodyLines[i].page === bodyLines[i - 1].page) { const d = bodyLines[i - 1].base - bodyLines[i].base; if (d > 0 && d < body * 3) dys.push(Math.round(d)); }
   const leading = mode(dys) || body * 1.3;
   const rightEdge = mode(bodyLines.map(l => Math.round(l.x1 / 2) * 2)) || 0;
@@ -2025,8 +2107,11 @@ async function extractLayout(pdf, from, to, onPage) {
       const gap = samePage ? prev.base - l.base : 0;
       const indentUp = l.x0 - prev.x0 > l.size * 0.5;
       const sizeJump = Math.abs(l.size - prev.size) > body * 0.06;
+      // a bulleted item's later lines are indented to its text: they continue it; the next bullet starts a new item
+      const bulletRun = /^[•▪◦‣]/.test(cur.text) && !/^[•▪◦‣]/.test(l.text) && l.x0 - cur.x0 < l.size * 3;
       if (samePage && gap > leading * 1.45) start = true;
-      else if (indentUp && samePage) start = true;
+      else if (/^[•▪◦‣]/.test(l.text) && samePage) start = true;
+      else if (indentUp && samePage && !bulletRun) start = true;
       else if (sizeJump) start = true;
       else if (!samePage) {
         // page break: continue unless the new page clearly starts a paragraph
@@ -2069,13 +2154,15 @@ function blocksToMarkdown(blocks, labels = {}) {
   const inline = t => t.replace(/\u0001(\d+)\u0002/g, (m, n) => { const k = +n; if (k < lastFn) series++; lastFn = k; return `[^${fnKey(n)}]`; });
   const esc = t => t.replace(/^(\d+)\. /, '$1\\. ').replace(/^(#|>|[-+*] )/, m => '\\' + m);
   blocks.forEach((b, i) => {
-    const n = i + 1;
+    const n = b.n ?? i + 1;   // applyEdits keeps each block's original number, so labels still find it
+    if (b.type === 'raw') { out.push(inline(b.text)); return; }
     if (remove.has(n)) return;
     if (b.type === 'fn') { notes.push(`[^${series}-${b.fnKey}]: ${inline(b.text)}`); return; }
     let text = inline(b.text);
-    if (merge.has(n) && out.length && !out[out.length - 1].startsWith('#')) { const last = out[out.length - 1]; out[out.length - 1] = /[\p{L}]-$/u.test(last) && /^[\p{Ll}]/u.test(text) ? last.slice(0, -1) + text : last + ' ' + text; return; }
-    const level = lvl.get(n);
-    if (level) { text = text.replace(/^\*(.*)\*$/, '$1'); if (out.length && labels.joinHeading && labels.joinHeading.includes(n) && /^#/.test(out[out.length - 1])) { out[out.length - 1] += (/^#+ \d+\.?$/.test(out[out.length - 1]) ? ' ' : ': ') + text; return; } out.push('#'.repeat(level) + ' ' + text); return; }
+    if (merge.has(n) && !b.sub && out.length && !out[out.length - 1].startsWith('#')) { const last = out[out.length - 1]; out[out.length - 1] = /[\p{L}]-$/u.test(last) && /^[\p{Ll}]/u.test(text) ? last.slice(0, -1) + text : last + ' ' + text; return; }
+    // A joined heading: a wrapped title runs on, a subtitle gets a colon.
+    const level = b.sub ? 0 : b.level != null ? b.level || lvl.get(n) : lvl.get(n);
+    if (level) { text = text.replace(/^\*(.*)\*$/, '$1'); if (out.length && labels.joinHeading && labels.joinHeading.includes(n) && /^#/.test(out[out.length - 1])) { const prev = out[out.length - 1]; out[out.length - 1] += (/^#+ \d+\.?$/.test(prev) || /\b(for|of|and|or|the|a|an|in|on|to|with|from|by|as|at|into)$/i.test(prev) || /^\p{Ll}/u.test(text) ? ' ' : ': ') + text; return; } out.push('#'.repeat(level) + ' ' + text); return; }
     if ((b.quote && !notQuote.has(n)) || quote.has(n)) { out.push('> ' + text); return; }
     out.push(esc(text));
   });
@@ -2134,10 +2221,16 @@ async function importPdf(file){
   try{ Prog.show('Opening the PDF…'); await loadPdfJs(); pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer(), isEvalSupported:false}).promise; }
   catch(e){ Prog.hide(); return toast('Could not open that PDF: '+e.message, 6000, true); }
   const ranges=await outlineRanges(pdf); Prog.hide();
-  const bookTitle=collapse(((await pdf.getMetadata().catch(()=>null))||{}).info?.Title||'') || file.name.replace(/\.pdf$/i,'');
+  // Titles left by the authoring tool ("Microsoft Word - facing.doc", "untitled") are no title at all.
+  let metaTitle=collapse(((await pdf.getMetadata().catch(()=>null))||{}).info?.Title||'');
+  if (/^(microsoft (word|powerpoint)\b|untitled\b)|\.(docx?|pdf|tex|dvi|rtf|odt|indd|qxd)$/i.test(metaTitle)) metaTitle='';
+  const bookTitle=metaTitle || file.name.replace(/\.pdf$/i,'');
   const n=pdf.numPages;
   const choice = await new Promise(resolve=>{
-    const modes=[['layout','Standard','The reader rebuilds paragraphs, italics and footnotes from the page layout; Claude only labels headings and page clutter. Fast, cheap, and the wording is exactly the PDF’s.'],['rewrite','Thorough','Claude retypes the text. Slower and dearer; use it for two-column journal pages, scans or heavy tables.'],['none','No Claude','Layout only, with headings guessed from type size. Free and instant.']];
+    const est=tidyEstimate(n*450), keyNote=Vault.has()?'':' It needs your Anthropic API key: you are asked for it next.';
+    const modes=[['layout','With Claude (recommended).',`The reader rebuilds paragraphs, italics and footnotes from the page layout. Claude then marks headings and page clutter and repairs words and lines the PDF broke, and each repair is checked so the wording stays the PDF’s. Roughly ${est?priceRange(est):'a few cents'} for all ${n} pages, charged to your Anthropic account.${keyNote}`],
+      ['none','Without Claude.','Layout only: headings are guessed from type size, and page clutter and broken words stay in. Free and instant.'],
+      ['rewrite','Retype with Claude.','Claude retypes every page. Use it only if the result above comes out jumbled (for example some three-column journals). Slower and several times dearer, and the wording is not checked.']];
     const modeIn=modes.map(([v],i)=>h('input',{type:'radio',name:'cmode',value:v,checked:i===0})); const body=[];
     const bib=ranges.find(r=>BIB.test(r.title));
     if (ranges.length>1){
@@ -2160,10 +2253,13 @@ async function importPdf(file){
     }
     setTimeout(()=>{ const f=$('#dlgBody .list input:checked'); if (f) f.closest('li').scrollIntoView({block:'nearest'}); },60);
     showDlg([h('h2',{},h('span',{},'Import PDF'),closeX()), ...body,
-      h('h3',{},'Clean-up'), ...modes.map(([v,l,d],i)=>h('label',{class:'opt'}, modeIn[i], h('span',{}, h('b',{},l), ' ', h('span',{class:'muted small'},d)))),
+      h('h3',{},'Turning it into text'), ...modes.slice(0,2).map(([v,l,d],i)=>h('label',{class:'opt'}, modeIn[i], h('span',{}, h('b',{},l), ' ', h('span',{class:'muted small'},d)))),
+      h('details',{style:'margin:4px 0 0'}, h('summary',{class:'small muted',style:'cursor:pointer'},'Another option'), h('label',{class:'opt'}, modeIn[2], h('span',{}, h('b',{},modes[2][1]), ' ', h('span',{class:'muted small'},modes[2][2])))),
       h('div',{class:'row',style:'margin-top:14px'}, h('button',{class:'btn primary',onclick:()=>{ const c=body.go(); if (!c.units.length) return toast('Choose at least one section.'); closeDlg(); resolve({...c, mode:modeIn.find(x=>x.checked).value}); }},'Import'))], ()=>resolve(null));
   });
   if (!choice) return;
+  // Ask for the key now rather than after the pages are read; without one, offer to carry on without Claude.
+  if (choice.mode!=='none'){ try{ await Vault.get(); }catch{ if (!confirm('Convert this PDF without Claude instead? Headings are guessed from type size, and page clutter and broken words stay in.')) return; choice.mode='none'; } }
   try{
     Prog.show('Reading pages…');
     const onPage=i=>Prog.set(`Reading page ${i} of ${n}`, null, '');
@@ -2179,7 +2275,9 @@ async function importPdf(file){
     if (choice.bib){ bibDoc = await makeConvDoc(`${bookTitle}: ${choice.bib.title}`, await read([choice.bib]), choice.mode, null, grp(choice.bib.start)); docs.push(bibDoc); }
     for (const u of choice.units){
       const title = u.parts ? bookTitle : ranges.length>1 ? `${bookTitle}: ${u.title}` : u.title;
-      docs.push(await makeConvDoc(title, await read(u.parts||[u]), choice.mode, bibDoc&&bibDoc.id, grp(u.start||0)));
+      const d=await makeConvDoc(title, await read(u.parts||[u]), choice.mode, bibDoc&&bibDoc.id, grp(u.start||0));
+      if (!metaTitle && choice.units.length===1 && ranges.length<=1){ d.convert.titleFromText=true; await DB.put(d); }   // named after the file: use the text's own title once it is known
+      docs.push(d);
     }
     Prog.hide();
     await runConversions(docs.map(d=>d.id));
@@ -2188,7 +2286,8 @@ async function importPdf(file){
 async function makeConvDoc(title, data, mode, appendFrom, group){
   const parts=[];
   if (mode==='rewrite'){ const per=3; for (let i=0;i<data.pages.length;i+=per) parts.push({start:i, status:'pending', md:''}); }
-  else { const per=70; for (let i=0;i<data.blocks.length;i+=per) parts.push({start:i, end:Math.min(data.blocks.length,i+per), status:mode==='none'?'done':'pending', labels:mode==='none'?guessLabels(data.blocks,i,Math.min(data.blocks.length,i+per)):null}); }
+  else { const B=data.blocks; for (let i=0;i<B.length;){ let j=i, w=0; while (j<B.length && j-i<40 && (w<2500 || j===i)){ w+=wordCount(B[j].text); j++; }
+      parts.push({start:i, end:j, status:mode==='none'?'done':'pending', labels:mode==='none'?guessLabels(B,i,j):null}); i=j; } }
   const d={id:uid(), title, group:group||null, versions:[], pack:null, created:Date.now(), updated:Date.now(), pos:0,
     convert:{mode, pages:data.pages||null, blocks:data.blocks||null, per:3, parts, clean:mode!=='none', appendFrom}};
   await DB.put(d); return d;
@@ -2200,59 +2299,176 @@ function guessLabels(blocks, a, z){
   for (let i=a;i<z;i++){ const b=blocks[i]; if (b.type==='h') L.headings.push({n:i+1, level:Math.min(3, sizes.indexOf(b.size)+1)}); if (b.type==='small') L.remove.push(i+1); }
   return L;
 }
-const LABEL_SCHEMA = {type:'object', additionalProperties:false, required:['headings','remove','merge','quotes','notQuotes','joinHeading'], properties:{
+// Tidying with Claude ("Standard" mode). Claude sees each part's blocks in full and returns structure labels plus
+// small edits, and the app checks every edit before keeping it:
+//   fixes     exact find/replace inside a block, for extraction damage only. A fix may change spacing, punctuation,
+//             capitals and Markdown, and drop a few stray characters; it can never add or change letters or digits.
+//   splits    cut a block in two (a run-in heading, two paragraphs run together); nothing is retyped.
+//   rewrites  retype a run of scrambled blocks (interleaved columns, a flattened table). The words must come from
+//             those blocks, and most of their text must survive; otherwise the original blocks are kept.
+// Edits that fail a check are sent back once with the reason, so Claude can correct them.
+const EDIT_PROPS = {
+  fixes:{type:'array', items:{type:'object', additionalProperties:false, required:['n','find','replace'], properties:{n:{type:'integer'}, find:{type:'string'}, replace:{type:'string'}}}},
+  splits:{type:'array', items:{type:'object', additionalProperties:false, required:['n','before','level'], properties:{n:{type:'integer'}, before:{type:'string'}, level:{type:'integer'}}}},
+  rewrites:{type:'array', items:{type:'object', additionalProperties:false, required:['from','to','text'], properties:{from:{type:'integer'}, to:{type:'integer'}, text:{type:'string'}}}} };
+const LABEL_KEYS = ['headings','remove','merge','quotes','notQuotes','joinHeading'];
+const LABEL_SCHEMA = {type:'object', additionalProperties:false, required:[...LABEL_KEYS, ...Object.keys(EDIT_PROPS)], properties:{
   headings:{type:'array', items:{type:'object', additionalProperties:false, required:['n','level'], properties:{n:{type:'integer'}, level:{type:'integer'}}}},
   remove:{type:'array', items:{type:'integer'}}, merge:{type:'array', items:{type:'integer'}}, quotes:{type:'array', items:{type:'integer'}},
-  notQuotes:{type:'array', items:{type:'integer'}}, joinHeading:{type:'array', items:{type:'integer'}} }};
-async function labelPart(blocks, a, z){
-  const bodySize = (()=>{ const c={}; for (const b of blocks) if (b.type==='p') c[b.size]=(c[b.size]||0)+b.text.length; return +Object.entries(c).sort((x,y)=>y[1]-x[1])[0]?.[0]||10; })();
-  const desc = i => { const b=blocks[i]; const t=b.text.replace(/\u0001\d+\u0002/g,'');
-    const ex = t.length<=220 ? t : t.slice(0,150)+' … '+t.slice(-60);
-    const tags=[b.type==='h'?'larger or bold type':null, b.type==='small'?'small print':null, b.type==='fn'?'footnote':null, b.quote?'indented block':null,
-      b.size!==bodySize?`${b.size}pt (body ${bodySize}pt)`:null, b.bold?'bold':null, i===0||blocks[i-1].page!==b.page?`first on page ${b.page}`:null].filter(Boolean);
-    return `${i+1}. [${tags.join(', ')||'body'}] ${ex}`; };
-  const ctx = a>0 ? blocks.slice(Math.max(0,a-2),a).map((_,k)=>desc(Math.max(0,a-2)+k)).join('\n') : '';
-  const list = []; for (let i=a;i<z;i++) list.push(desc(i));
-  let busy=0;
-  for(;;){
-    try{
-      const {blocks:out, stop} = await claudeStream({model:P.fastModel, max_tokens:4000,
-        system:'You label the structure of text extracted from a PDF. You never rewrite text; you only classify numbered blocks.',
-        messages:[{role:'user', content:`Blocks of text extracted from an academic PDF, in reading order. Long blocks are shortened with “…”.\n${ctx?`\nContext only (already labelled):\n${ctx}\n`:''}\nBlocks to label:\n${list.join('\n')}\n
-Return, using the block numbers:
+  notQuotes:{type:'array', items:{type:'integer'}}, joinHeading:{type:'array', items:{type:'integer'}}, ...EDIT_PROPS }};
+const EDITS_SCHEMA = {type:'object', additionalProperties:false, required:Object.keys(EDIT_PROPS), properties:EDIT_PROPS};
+// Footnote markers are \u0001n\u0002 in block text and [^n] in what Claude sees and writes.
+const showMarks = t => t.replace(/\u0001(\d+)\u0002/g, '[^$1]');
+const readMarks = t => String(t||'').replace(/\[\^(\d+)\]/g, '\u0001$1\u0002');
+// Letters and digits only, for comparing what an edit keeps: "fi eld", "ﬁeld" and "field" are the same.
+const alnum = t => String(t||'').normalize('NFKC').replace(/\u0001\d+\u0002|\[\^\d+\]/g,'').replace(/[^\p{L}\p{N}]/gu,'');
+const letters = t => alnum(t).toLowerCase();
+// A fix keeps every letter, in order, ignoring case. It may drop up to three digits or capitals (a page number
+// or a drop-cap letter caught in a sentence), never a lower-case letter, so it cannot change a word.
+function checkFix(text, f){
+  const find=readMarks(f.find), rep=readMarks(f.replace);
+  if (!find || find===rep) return 'find is empty or the same as replace';
+  if (!text.includes(find)) return 'find is not in the block exactly as written';
+  const a=alnum(find), b=letters(rep), dropped=[]; let j=0;
+  for (const c of a){ if (j<b.length && c.toLowerCase()===b[j]) j++; else dropped.push(c); }
+  if (j<b.length || dropped.length>3 || dropped.some(c=>!/[\p{N}\p{Lu}]/u.test(c))) return 'a fix may only change spacing, punctuation and capitals, or drop a stray page number or capital letter; it may not change words';
+  return null;
+}
+function checkSplit(text, s){
+  const before=readMarks(s.before), k=before?text.indexOf(before):-1;
+  if (k<0) return 'before is not in the block exactly as written';
+  if (k===0 || !text.slice(0,k).trim() || !text.slice(k).trim()) return 'before must leave text on both sides';
+  return null;
+}
+function checkRewrite(blocks, r, a, z){
+  if (!(r.from>a && r.to<=z && r.from<=r.to)) return `from and to must be blocks ${a+1}–${z}, with from ≤ to`;
+  if (r.to-r.from>40) return 'rewrite at most 40 blocks at a time';
+  const src=letters(blocks.slice(r.from-1, r.to).filter(b=>b.type!=='fn').map(b=>b.text).join(' '));
+  const words=readMarks(r.text).split(/\s+/).map(letters).filter(Boolean);
+  const total=words.reduce((n,w)=>n+w.length,0), found=words.filter(w=>src.includes(w)).reduce((n,w)=>n+w.length,0);
+  if (!total) return 'text is empty; use remove for blocks that are not the author’s text';
+  if (found < total*0.98) return 'the text has words that are not in those blocks';
+  if (total < src.length*0.8) return 'the text leaves out too much of those blocks; keep every word of the author’s text';
+  return null;
+}
+// Applies Claude's edits for blocks a..z (0-based, end exclusive) and returns the ones that pass, plus the failures.
+function vetEdits(blocks, a, z, E, prev){
+  const ok={fixes:[], splits:[], rewrites:[]}, bad=[]; const text=new Map(), taken=new Set(prev?prev.taken:[]);
+  const cur = n => text.has(n) ? text.get(n) : blocks[n-1].text;
+  if (prev) for (const f of prev.fixes) text.set(f.n, cur(f.n).split(f.find).join(f.replace));
+  for (const r of E.rewrites||[]){ const why=checkRewrite(blocks, r, a, z) || (Array.from({length:r.to-r.from+1},(_,i)=>r.from+i).some(n=>taken.has(n)) ? 'overlaps another rewrite' : null);
+    if (why){ bad.push({kind:'rewrite', edit:r, why}); continue; }
+    for (let n=r.from;n<=r.to;n++) taken.add(n); ok.rewrites.push({from:r.from, to:r.to, text:readMarks(r.text).trim()}); }
+  const usable = n => n>a && n<=z && !taken.has(n) && blocks[n-1].type!=='fn';
+  for (const f of E.fixes||[]){ if (!usable(f.n)){ bad.push({kind:'fix', edit:f, why:`block ${f.n} is not one of blocks ${a+1}–${z} that can be edited`}); continue; }
+    const why=checkFix(cur(f.n), f); if (why){ bad.push({kind:'fix', edit:f, why}); continue; }
+    const fx={n:f.n, find:readMarks(f.find), replace:readMarks(f.replace)}; text.set(f.n, cur(f.n).split(fx.find).join(fx.replace)); ok.fixes.push(fx); }
+  const split=new Set(prev?prev.splits.map(s=>s.n):[]);
+  for (const s of E.splits||[]){ if (!usable(s.n) || split.has(s.n)){ bad.push({kind:'split', edit:s, why:split.has(s.n)?'one split per block':`block ${s.n} is not one of blocks ${a+1}–${z} that can be edited`}); continue; }
+    const why=checkSplit(cur(s.n), s); if (why){ bad.push({kind:'split', edit:s, why}); continue; }
+    split.add(s.n); ok.splits.push({n:s.n, before:readMarks(s.before), level:Math.max(0,Math.min(3,s.level|0))}); }
+  return {ok, bad, taken};
+}
+// The edits as the blocks Markdown is built from. Each keeps its original number n, so labels still apply.
+function applyEdits(blocks, L){
+  const rw=new Map((L.rewrites||[]).map(r=>[r.from,r])), gone=new Set(), fixes=new Map(), splits=new Map((L.splits||[]).map(s=>[s.n,s]));
+  for (const r of rw.values()) for (let n=r.from;n<=r.to;n++) gone.add(n);
+  for (const f of L.fixes||[]) (fixes.get(f.n)||fixes.set(f.n,[]).get(f.n)).push(f);
+  const out=[];
+  blocks.forEach((b,i)=>{ const n=i+1;
+    if (rw.has(n)) out.push({type:'raw', n, text:rw.get(n).text});
+    if (gone.has(n)){ if (b.type==='fn') out.push({...b, n}); return; }
+    let text=b.text; for (const f of fixes.get(n)||[]) text=text.split(f.find).join(f.replace);
+    const s=splits.get(n), k=s?text.indexOf(s.before):-1;
+    if (k>0){ out.push({...b, n, text:text.slice(0,k).trim(), level:s.level||0}); out.push({...b, n, text:text.slice(k).trim(), sub:true}); return; }
+    out.push({...b, n, text});
+  });
+  return out;
+}
+const TIDY_TASK = `Return, using the block numbers:
 - headings: each block that is a heading, with level 1 (document or chapter title), 2 (section) or 3 (subsection). Section numbers like "1.2." help decide levels.
 - joinHeading: headings that continue the heading just before them as one title (for example a chapter number, then its title, then its subtitle: join the title and subtitle).
-- remove: page furniture that is not the author's text: running heads, page numbers, copyright or licence lines, download notices, printer or file marks, journal boilerplate.
-- merge: body blocks that continue the previous body block as the same paragraph (split by a page break, footnotes or a figure). Only when the sentence clearly runs on.
+- remove: page furniture that is not the author's text: running heads, page numbers, copyright or licence lines, download notices, printer or file marks, journal boilerplate, author affiliations and e-mail addresses.
+- merge: body blocks that continue the previous body block as the same paragraph (split by a page break, a column break, footnotes or a figure). Only when the sentence clearly runs on.
 - quotes: block quotations or epigraphs not already tagged as an indented block. notQuotes: blocks tagged as an indented block that are really ordinary paragraphs or list items.
-Leave footnotes alone. Use empty arrays where nothing applies.`}],
-        output_config:{format:{type:'json_schema', schema:LABEL_SCHEMA}}});
-      if (stop==='max_tokens') throw new Error('the label list was too long');
-      const L=JSON.parse(out.filter(b=>b&&b.type==='text').map(b=>b.text).join(''));
-      const inRange = n => n>a && n<=z;
-      for (const k of ['remove','merge','quotes','notQuotes','joinHeading']) L[k]=(L[k]||[]).filter(inRange);
-      L.headings=(L.headings||[]).filter(x=>inRange(x.n)).map(x=>({n:x.n, level:Math.max(1,Math.min(3,x.level))}));
-      return L;
-    }catch(e){
-      if (++busy<4 && /API (429|5\d\d)|overloaded|Failed to fetch|network|stream error/i.test(e.message)){ await sleep(8000*busy); continue; }
-      throw e;
+- fixes: exact repairs inside one block, for damage done by the extraction: words split apart or run together ("fi eld", "representationlearning"), spaces inside URLs, a lost hyphen in a compound, a stray page number or letter inside a sentence, odd capitals from small caps ("tHis"). find is copied exactly from block n and is long enough to be unique there; replace is the repaired string. A fix can change spacing, punctuation and capitals, or drop a stray character; it cannot change words. Never correct the author's own spelling or wording.
+- splits: a block that begins with a run-in heading ("2.1 Related Work There is a long history…") or holds two paragraphs or list items run together: n, before (the exact text where the second part starts), and level (1 to 3 when the first part is a heading, else 0).
+- rewrites: only for runs of blocks whose text is scrambled beyond what fixes and splits can repair, such as lines of two columns interleaved, a table flattened into running text, or a bulleted list run into one block: from and to (block numbers, inclusive) and text, the passage rebuilt as Markdown in reading order using only the words in those blocks. Keep every word of the author's text and leave out page furniture. Use Markdown lists and tables where the original has them, and [^n] for footnote markers.
+Most blocks need nothing. Leave footnotes alone. Use empty arrays where nothing applies.`;
+async function labelPart(blocks, a, z){
+  const bodySize = (()=>{ const c={}; for (const b of blocks) if (b.type==='p') c[b.size]=(c[b.size]||0)+b.text.length; return +Object.entries(c).sort((x,y)=>y[1]-x[1])[0]?.[0]||10; })();
+  const desc = (i, full) => { const b=blocks[i]; const t=showMarks(b.text);
+    const tags=[b.type==='h'?'larger or bold type':null, b.type==='small'?'small print':null, b.type==='fn'?'footnote':null, b.quote?'indented block':null,
+      b.size!==bodySize?`${b.size}pt (body ${bodySize}pt)`:null, b.bold?'bold':null, i===0||blocks[i-1].page!==b.page?`first on page ${b.page}`:null].filter(Boolean);
+    return `${i+1}. [${tags.join(', ')||'body'}] ${full||t.length<=220 ? t : t.slice(0,150)+' … '+t.slice(-60)}`; };
+  const ctx = a>0 ? blocks.slice(Math.max(0,a-2),a).map((_,k)=>desc(Math.max(0,a-2)+k)).join('\n') : '';
+  const list = []; for (let i=a;i<z;i++) list.push(desc(i, true));
+  const messages=[{role:'user', content:`Blocks of text extracted from an academic PDF, in reading order. Footnote markers appear as [^n].\n${ctx?`\nContext only (already tidied; long blocks shortened with “…”):\n${ctx}\n`:''}\nBlocks to tidy:\n${list.join('\n')}\n\n${TIDY_TASK}`}];
+  const system='You tidy text extracted from a PDF of an academic text: you label its structure and repair damage done by the extraction. You never paraphrase, summarise, or correct the author’s wording.';
+  const call = async (msgs, schema) => {
+    for (let busy=0;;){
+      try{
+        const r = await claudeStream({model:P.fastModel, max_tokens:32000, system, messages:msgs, output_config:{format:{type:'json_schema', schema}}});
+        if (r.stop==='max_tokens') throw new Error('the reply was too long for the output limit');
+        return {text:r.blocks.filter(b=>b&&b.type==='text').map(b=>b.text).join(''), usd:usdOf(P.fastModel, r.usage)};
+      }catch(e){
+        if (++busy<4 && /API (429|5\d\d)|overloaded|Failed to fetch|network|stream error/i.test(e.message)){ await sleep(8000*busy); continue; }
+        throw e;
+      }
     }
+  };
+  const first=await call(messages, LABEL_SCHEMA); let usd=first.usd;
+  const L=JSON.parse(first.text);
+  const inRange = n => n>a && n<=z;
+  for (const k of LABEL_KEYS.slice(1)) L[k]=(L[k]||[]).filter(inRange);
+  L.headings=(L.headings||[]).filter(x=>inRange(x.n)).map(x=>({n:x.n, level:Math.max(1,Math.min(3,x.level))}));
+  let v=vetEdits(blocks, a, z, L);
+  const ok={fixes:[...v.ok.fixes], splits:[...v.ok.splits], rewrites:[...v.ok.rewrites]};
+  if (v.bad.length){
+    // One round of corrections: Claude sees why each edit was refused and may send a corrected one or drop it.
+    const why=v.bad.map(x=>`- ${x.kind} ${JSON.stringify(x.edit)}: ${x.why}.`).join('\n');
+    try{
+      const again=await call([...messages, {role:'assistant', content:first.text}, {role:'user', content:`These edits were not applied:\n${why}\nSend corrected versions of these edits only, or leave them out. Edits that were applied stay applied.`}], EDITS_SCHEMA);
+      usd+=again.usd;
+      const v2=vetEdits(blocks, a, z, JSON.parse(again.text), {fixes:ok.fixes, splits:ok.splits, taken:v.taken});
+      for (const k of Object.keys(ok)) ok[k].push(...v2.ok[k]);
+      if (v2.bad.length) Log.add('info','PDF clean-up', `${v2.bad.length} edit${v2.bad.length>1?'s':''} refused`, {blocks:`${a+1}–${z}`, edits:v2.bad.map(x=>`${x.kind} ${JSON.stringify(x.edit).slice(0,200)}: ${x.why}`).join('\n')});
+    }catch(e){ Log.add('error','PDF clean-up', 'Correcting edits failed: '+e.message, {blocks:`${a+1}–${z}`}); }
   }
+  // Blocks inside a rewrite take no other labels.
+  const inRw = n => ok.rewrites.some(r=>n>=r.from && n<=r.to);
+  for (const k of LABEL_KEYS.slice(1)) L[k]=L[k].filter(n=>!inRw(n));
+  L.headings=L.headings.filter(x=>!inRw(x.n));
+  return {...L, ...ok, usd};
 }
 const convStatus = d => { const p=d.convert.parts, done=p.filter(x=>x.status==='done').length, failed=p.filter(x=>x.status==='failed').length;
   return `Converting from PDF: ${done} of ${p.length} parts done${failed?`, ${failed} failed`:''}`; };
 function conversionPanel(d){
-  const c=d.convert; const failed=c.parts.filter(x=>x.status==='failed');
+  const c=d.convert, done=c.parts.filter(x=>x.status==='done').length, failed=c.parts.filter(x=>x.status==='failed'), usd=c.parts.reduce((a,x)=>a+(x.usd||0),0);
   return h('div',{class:'empty'}, h('h2',{},d.title), h('p',{},convStatus(d)+'.'),
-    failed.length?h('p',{class:'muted small'},'Last error: '+(failed[failed.length-1].err||'unknown')):null,
-    h('div',{class:'row'}, h('button',{class:'btn primary',onclick:()=>runConversions([d.id])}, CONVERTING?'Converting…':'Resume conversion'), h('button',{class:'btn',onclick:openLog},'Error log')));
+    h('div',{class:'meter'}, h('i',{style:`width:${Math.round(100*done/Math.max(1,c.parts.length))}%`})),
+    usd?h('p',{class:'muted small'},`Spent so far: ${money(usd)}.`):null,
+    CONVERTING?h('p',{class:'muted small'},'The text opens here when it is ready. Each part is saved as it finishes, so you can close the app and resume later.')
+    :[failed.length?h('p',{class:'muted small'},'Last error: '+(failed[failed.length-1].err||'unknown')):null,
+      h('div',{class:'row'}, h('button',{class:'btn primary',onclick:()=>runConversions([d.id])},'Resume conversion'),
+        c.mode==='layout'?h('button',{class:'btn',onclick:()=>finishWithoutClaude(d.id)},'Finish without Claude'):null,
+        failed.length?h('button',{class:'btn',onclick:openLog},'Error log'):null)]);
+}
+// The parts Claude has not tidied get the layout-only labels; the parts it has done keep its work.
+async function finishWithoutClaude(id){
+  const d=await DB.get(id); if (!d || !d.convert || d.convert.mode!=='layout') return;
+  for (const p of d.convert.parts) if (p.status!=='done'){ p.labels=guessLabels(d.convert.blocks, p.start, p.end); p.status='done'; }
+  await DB.put(d); await runConversions([id]);
 }
 let CONVERTING=false;
 async function runConversions(ids){
   if (CONVERTING) return toast('A conversion is already running.');
   const need = (await Promise.all(ids.map(id=>DB.get(id)))).filter(d=>d&&d.convert&&d.convert.mode!=='none'&&d.convert.parts.some(p=>p.status!=='done'));
-  if (need.length){ try { await Vault.get(); } catch { return; } }
-  CONVERTING=true; Prog.show('Cleaning up the PDF text…');
+  // Show the conversion in the page while it runs.
+  if (!DOC || !ids.includes(DOC.id)) await openDoc(ids[ids.length-1]);
+  if (need.length){ try { await Vault.get(); } catch { renderDoc(true); return; } }
+  CONVERTING=true; Prog.show('Tidying the PDF text…'); renderDoc(true);
+  let usd=0;
   const total=need.reduce((a,d)=>a+d.convert.parts.filter(p=>p.status!=='done').length,0); let done=0;
   try{
     for (const id of ids){
@@ -2262,11 +2478,11 @@ async function runConversions(ids){
       await pool(todo, 3, async part=>{
         part.status='running';
         try{
-          if (c.mode==='rewrite') part.md = await cleanPart(c.pages, part.start, c.per);
-          else part.labels = await labelPart(c.blocks, part.start, part.end);
+          if (c.mode==='rewrite'){ const r=await cleanPart(c.pages, part.start, c.per); part.md=r.md; part.usd=r.usd; }
+          else { const {usd, ...L}=await labelPart(c.blocks, part.start, part.end); part.labels=L; part.usd=usd; }
           part.status='done'; part.err=''; }
         catch(e){ part.status='failed'; part.err=e.message; Log.add('error','PDF clean-up', e.message, {doc:d.title, mode:c.mode||'rewrite', part:c.mode==='rewrite'?`pages ${part.start+1}–${part.start+c.per}`:`blocks ${part.start+1}–${part.end}`}); }
-        done++; Prog.set(`Cleaning up “${d.title.slice(0,50)}”`, total?done/total:1, `${done} of ${total} parts`);
+        done++; usd+=part.usd||0; Prog.set(`Tidying “${d.title.slice(0,50)}”`, total?done/total:1, `${done} of ${total} parts${usd?`. Spent so far: ${money(usd)}`:''}`);
         await DB.put(d); if (DOC && DOC.id===d.id) renderDoc(true);
       });
     }
@@ -2277,10 +2493,12 @@ async function runConversions(ids){
       if (!d.convert || d.convert.parts.some(p=>p.status!=='done')) continue;
       let md;
       if (d.convert.mode==='rewrite' || !d.convert.mode) md=d.convert.parts.map(p=>p.md).join('\n\n').trim();
-      else { const L={headings:[],remove:[],merge:[],quotes:[],notQuotes:[],joinHeading:[]};
+      else { const L={headings:[],remove:[],merge:[],quotes:[],notQuotes:[],joinHeading:[],fixes:[],splits:[],rewrites:[]};
         for (const p of d.convert.parts) for (const k of Object.keys(L)) L[k].push(...((p.labels||{})[k]||[]));
-        md=blocksToMarkdown(d.convert.blocks, L).trim(); }
-      if (!/^#\s/m.test(md.split('\n').slice(0,5).join('\n'))) md=`# ${d.title}\n\n${md}`;
+        md=blocksToMarkdown(applyEdits(d.convert.blocks, L), L).trim(); }
+      const h1=md.split('\n').slice(0,5).join('\n').match(/^#\s+(.+)$/m);
+      if (h1 && d.convert.titleFromText) d.title=collapse(h1[1].replace(/[*_`]/g,'')).slice(0,300);
+      if (!h1) md=`# ${d.title}\n\n${md}`;
       if (d.convert.appendFrom){ const b=await DB.get(d.convert.appendFrom); const bmd=b&&!b.convert&&b.versions.length?b.versions[b.versions.length-1].md:null;
         if (!bmd) continue; md += '\n\n## References\n\n' + bmd.replace(/^#[^\n]*\n+/, '').replace(/^#{1,3}\s*(references|bibliography)\s*\n+/im,''); }
       d.versions=[{md, at:Date.now(), name:'PDF'}]; delete d.convert; d.updated=Date.now(); touch(d); await DB.put(d); Sync.schedule(d);
@@ -2288,23 +2506,23 @@ async function runConversions(ids){
     }
   } finally { CONVERTING=false; Prog.hide(); }
   const left=(await Promise.all(ids.map(id=>DB.get(id)))).filter(d=>d&&d.convert);
-  if (left.length) toast(`${left.length} text${left.length>1?'s are':' is'} not finished. Open it from the library and tap “Resume conversion”.`, 7000, true);
-  else toast(ids.length>1?`Imported ${ids.length} texts. Find them in the library.`:'Converted. Skim it against the PDF before building a guide.', 6000);
+  if (left.length) toast(left.length>1?`${left.length} texts are not finished. Open them from the library to resume.`:'The text is not finished. Resume it from its page.', 7000, true);
+  else toast((ids.length>1?`Imported ${ids.length} texts. Find them in the library.`:'Converted.')+(usd?` Tidying cost ${money(usd)}.`:''), 6000);
   const first=await DB.get(ids[ids.length-1]); if (first && (!DOC || DOC.id===first.id || ids.includes(DOC.id))) openDoc(first.id); else renderDoc(true);
 }
 async function cleanPart(pages, start, per){
   const before=start>0?pages[start-1].slice(-1500):'', main=pages.slice(start,start+per).join('\n[page break]\n'), after=pages[start+per]?pages[start+per].slice(0,1500):'';
-  if (!main.trim()) return '';
+  if (!main.trim()) return {md:'', usd:0};
   let busy=0;
   for(;;){
     try{
-      const {blocks, stop} = await claudeStream({model:P.fastModel, max_tokens:12000, system:'You convert raw text extracted from a PDF of an academic text into clean Markdown. Output only Markdown, with no commentary and no code fences.',
+      const {blocks, stop, usage} = await claudeStream({model:P.fastModel, max_tokens:12000, system:'You convert raw text extracted from a PDF of an academic text into clean Markdown. Output only Markdown, with no commentary and no code fences.',
         messages:[{role:'user',content:`<before>\n${before}\n</before>\n<main>\n${main}\n</main>\n<after>\n${after}\n</after>\n\nRewrite only the MAIN text as clean Markdown. BEFORE and AFTER are read-only context.
 Rules: keep every word of the author's text, in order; do not summarise or correct wording. Rejoin lines into paragraphs and words split by end-of-line hyphens. Remove page numbers, running headers and footers, download notices and publisher boilerplate that interrupt the text. Use # for a chapter title, ## and ### for section headings. Keep numbered premises, lists and tables as Markdown. Turn footnote markers into [^n] and footnote text into [^n]: lines placed where they occur. Use *italics* only where the text is clearly italic.
 Boundaries: if MAIN begins partway through a paragraph that started in BEFORE, skip that opening fragment (the previous part already finished it). If MAIN ends partway through a paragraph, finish that paragraph using AFTER, then stop.
 If MAIN contains no body text at all (for example a blank page), reply with nothing.`}]});
       if (stop==='max_tokens') throw new Error('this part was too long for the output limit');
-      return blocks.filter(b=>b&&b.type==='text').map(b=>b.text).join('').replace(/^```(?:markdown)?\s*|\s*```$/g,'');
+      return {md:blocks.filter(b=>b&&b.type==='text').map(b=>b.text).join('').replace(/^```(?:markdown)?\s*|\s*```$/g,''), usd:usdOf(P.fastModel, usage)};
     }catch(e){
       if (++busy<4 && /API (429|5\d\d)|overloaded|Failed to fetch|network|stream error/i.test(e.message)){ await sleep(8000*busy); continue; }
       throw e;
